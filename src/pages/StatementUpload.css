@@ -1,0 +1,99 @@
+.statement-upload {
+  background: var(--color-surface, #fff);
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.statement-upload h2 {
+  font-size: 1.1rem;
+  margin-bottom: 0.4rem;
+}
+
+.statement-upload-hint {
+  font-size: 0.85rem;
+  color: #666;
+  margin: 0 0 1rem;
+}
+
+.statement-upload-picker {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.statement-upload-error {
+  color: #c0392b;
+  font-size: 0.85rem;
+}
+
+.statement-upload-success {
+  color: #1a7f37;
+  font-size: 0.85rem;
+}
+
+.statement-table-wrapper {
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+
+.statement-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  min-width: 640px;
+}
+
+.statement-table th {
+  text-align: left;
+  padding: 0.4rem;
+  border-bottom: 2px solid #eee;
+  white-space: nowrap;
+}
+
+.statement-table td {
+  padding: 0.3rem 0.4rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.statement-table input,
+.statement-table select {
+  width: 100%;
+  padding: 0.35rem 0.4rem;
+  font-size: 0.85rem;
+  border: 1px solid #d8dbe0;
+  border-radius: 6px;
+  background: #fff;
+  color: #1a1a1a;
+}
+
+.statement-table input[type='date'] {
+  min-width: 130px;
+}
+
+.statement-table input[type='number'] {
+  min-width: 90px;
+}
+
+.statement-row-excluded {
+  opacity: 0.45;
+}
+
+.statement-upload button[type='button'] {
+  padding: 0.7rem 1.2rem;
+  font-size: 1rem;
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  color: white;
+  cursor: pointer;
+}
+
+.statement-upload button[type='button']:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
