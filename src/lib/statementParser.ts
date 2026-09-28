@@ -90,15 +90,15 @@ function parseLine(line: string): ParsedTransaction | null {
 const HEADER_ALIASES: Record<string, string[]> = {
   date: ['date', 'txn date', 'transaction date', 'value date', 'posting date'],
   description: ['description', 'narrative', 'particulars', 'details', 'remarks', 'transaction details'],
-  debit: ['debit', 'withdrawal', 'debit amount', 'dr'],
-  credit: ['credit', 'deposit', 'credit amount', 'cr'],
+  debit: ['debit', 'debits', 'withdrawal', 'withdrawals', 'debit amount', 'dr'],
+  credit: ['credit', 'credits', 'deposit', 'deposits', 'credit amount', 'cr'],
   amount: ['amount', 'transaction amount', 'value'],
   type: ['type', 'dr/cr', 'transaction type', 'cr/dr'],
 }
 
 function findColumn(headers: string[], key: keyof typeof HEADER_ALIASES): number {
   const aliases = HEADER_ALIASES[key]
-  return headers.findIndex((h) => aliases.includes(h.trim().toLowerCase()))
+  return headers.findIndex((h) => aliases.includes(h.trim().toLowerCase().replace(/\.$/, '')))
 }
 
 /**
