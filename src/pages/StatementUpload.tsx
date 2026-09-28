@@ -5,18 +5,20 @@ import { parseStatementPdf, parseStatementCsv, parseStatementText, type ParsedTr
 import type { Category } from '../lib/types'
 import { useCategories } from '../hooks/useCategories'
 import { useMerchantMemory } from '../hooks/useMerchantMemory'
+import { FileDropzone } from '../components/FileDropzone'
 import './StatementUpload.css'
 
 interface ReviewRow extends ParsedTransaction {
   categoryId: string
   include: boolean
+  sourceIndex: number
 }
 
 export function StatementUpload() {
   const { user } = useAuth()
   const { categories } = useCategories()
   const { guessCategoryId, learn } = useMerchantMemory()
-  const [file, setFile] = useState<File | null>(null)
+  const [files, setFiles] = useState<File[]>([])
   const [rows, setRows] = useState<ReviewRow[]>([])
   const [parsing, setParsing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -25,36 +27,41 @@ export function StatementUpload() {
   const [mode, setMode] = useState<'file' | 'paste'>('file')
   const [pasteText, setPasteText] = useState('')
 
-  function applyParsed(parsed: ParsedTransaction[], emptyMessage: string) {
-    setRows(
-      parsed.map((p) => ({
-        ...p,
-        categoryId: p.direction === 'debit' ? guessCategoryId(p.description, categories) : '',
-        include: true,
-      })),
-    )
-    if (parsed.length === 0) setError(emptyMessage)
+  function categorize(parsed: ParsedTransaction[], sourceIndex: number): ReviewRow[] {
+    return parsed.map((p) => ({
+      ...p,
+      categoryId: p.direction === 'debit' ? guessCategoryId(p.description, categories) : '',
+      include: true,
+      sourceIndex,
+    }))
   }
 
-  async function handleFileSelect(f: File) {
-    setFile(f)
+  async function handleParseFiles() {
+    if (files.length === 0) return
     setError(null)
     setSavedCount(null)
     setParsing(true)
-    try {
+
+    const allRows: ReviewRow[] = []
+    const failures: string[] = []
+
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i]
       const isCsv = f.type === 'text/csv' || f.name.toLowerCase().endsWith('.csv')
-      const parsed = isCsv ? await parseStatementCsv(f) : await parseStatementPdf(f)
-      applyParsed(
-        parsed,
-        isCsv
-          ? 'No transactions could be detected in this CSV. Make sure it has a header row with Date/Description/Amount (or Debit/Credit) columns.'
-          : 'No transactions could be automatically detected. This statement layout may not be supported — try a different export, or check back once parsing improves.',
-      )
-    } catch {
-      setError('Could not read this file. Make sure it is a text-based PDF statement or a CSV export, not a scanned image.')
-    } finally {
-      setParsing(false)
+      try {
+        const parsed = isCsv ? await parseStatementCsv(f) : await parseStatementPdf(f)
+        if (parsed.length === 0) failures.push(`${f.name}: no transactions detected`)
+        allRows.push(...categorize(parsed, i))
+      } catch {
+        failures.push(`${f.name}: could not read this file`)
+      }
     }
+
+    setRows(allRows)
+    if (failures.length > 0) {
+      setError(`Some files had issues — you can still review/save what parsed:\n${failures.join('\n')}`)
+    }
+    setParsing(false)
   }
 
   function handlePasteParse() {
@@ -65,12 +72,15 @@ export function StatementUpload() {
       return
     }
     const parsed = parseStatementText(pasteText)
-    applyParsed(
-      parsed,
-      'No transactions could be detected in the pasted text. Make sure the first line is a header row (Date, Description, Amount or Debit/Credit) and columns are separated by commas or tabs.',
-    )
-    // Treat the pasted text as a "file" so it uploads to storage the same way as a real CSV.
-    setFile(new File([pasteText], `pasted-statement-${Date.now()}.csv`, { type: 'text/csv' }))
+    if (parsed.length === 0) {
+      setError(
+        'No transactions could be detected in the pasted text. Make sure the first line is a header row (Date, Description, Amount or Debit/Credit) and columns are separated by commas or tabs.',
+      )
+      return
+    }
+    const pastedFile = new File([pasteText], `pasted-statement-${Date.now()}.csv`, { type: 'text/csv' })
+    setFiles([pastedFile])
+    setRows(categorize(parsed, 0))
   }
 
   function updateRow(index: number, patch: Partial<ReviewRow>) {
@@ -78,7 +88,7 @@ export function StatementUpload() {
   }
 
   async function handleConfirm() {
-    if (!user || !file) return
+    if (!user || files.length === 0) return
     const included = rows.filter((r) => r.include)
     if (included.length === 0) {
       setError('Select at least one transaction to save.')
@@ -88,34 +98,37 @@ export function StatementUpload() {
     setSaving(true)
     setError(null)
 
-    const storagePath = `${user.id}/${Date.now()}-${file.name}`
-    const { error: uploadError } = await supabase.storage.from('bank-statements').upload(storagePath, file)
-    if (uploadError) {
-      setError(`Failed to upload statement: ${uploadError.message}`)
-      setSaving(false)
-      return
-    }
+    // Upload every source file and create one bank_statements row per file,
+    // so multiple passbooks/statements can be imported in a single go.
+    const usedSourceIndexes = [...new Set(included.map((r) => r.sourceIndex))]
+    const statementIdByFileIndex = new Map<number, string>()
 
-    const { data: statement, error: statementError } = await supabase
-      .from('bank_statements')
-      .insert({
-        user_id: user.id,
-        storage_path: storagePath,
-        original_filename: file.name,
-        status: 'reviewed',
-      })
-      .select()
-      .single()
+    for (const idx of usedSourceIndexes) {
+      const f = files[idx]
+      const storagePath = `${user.id}/${Date.now()}-${idx}-${f.name}`
+      const { error: uploadError } = await supabase.storage.from('bank-statements').upload(storagePath, f)
+      if (uploadError) {
+        setError(`Failed to upload ${f.name}: ${uploadError.message}`)
+        setSaving(false)
+        return
+      }
 
-    if (statementError || !statement) {
-      setError(statementError?.message ?? 'Failed to save statement record')
-      setSaving(false)
-      return
+      const { data: statement, error: statementError } = await supabase
+        .from('bank_statements')
+        .insert({ user_id: user.id, storage_path: storagePath, original_filename: f.name, status: 'reviewed' })
+        .select()
+        .single()
+
+      if (statementError || !statement) {
+        setError(statementError?.message ?? `Failed to save statement record for ${f.name}`)
+        setSaving(false)
+        return
+      }
+      statementIdByFileIndex.set(idx, statement.id)
     }
 
     // Pre-generate ids client-side so both tables can be inserted in a single
-    // batched call each, instead of one round trip per row (which is what
-    // made this crawl on statements with more than a few transactions).
+    // batched call each, instead of one round trip per row.
     const rowsWithIds = included.map((row) => ({
       row,
       expenseId: row.direction === 'debit' ? crypto.randomUUID() : null,
@@ -143,7 +156,7 @@ export function StatementUpload() {
     const { error: transactionsError } = await supabase.from('statement_transactions').insert(
       rowsWithIds.map(({ row, expenseId }) => ({
         user_id: user.id,
-        statement_id: statement.id,
+        statement_id: statementIdByFileIndex.get(row.sourceIndex),
         txn_date: row.date,
         description: row.description,
         amount: row.amount,
@@ -161,30 +174,29 @@ export function StatementUpload() {
 
     const savedExpenses = debitRows.length
 
-    // Remember each merchant's chosen category for next time, so imports and
-    // manual entries get smarter the more you use the app.
     for (const { row } of debitRows) {
       if (row.categoryId) learn(row.description, row.categoryId)
     }
 
     setSaving(false)
     setSavedCount(savedExpenses)
-    setFile(null)
+    setFiles([])
     setRows([])
     setPasteText('')
   }
 
   return (
-    <div className="statement-upload">
-      <h2>Upload bank statement</h2>
+    <div className="statement-upload page-enter">
+      <h2>Upload bank statements</h2>
       <p className="statement-upload-hint">
-        Upload a PDF or CSV bank statement, or paste statement text copied from your bank's website. We'll try to
-        detect transactions automatically — review and fix anything before it's saved as real expenses.
+        Upload one or more PDF/CSV bank statements — handy if you're importing multiple passbooks at once — or paste
+        statement text copied from your bank's website. We'll try to detect transactions automatically; review and
+        fix anything before it's saved as real expenses.
       </p>
 
       <div className="statement-mode-toggle">
         <button type="button" className={mode === 'file' ? 'active' : ''} onClick={() => setMode('file')}>
-          Upload file
+          Upload files
         </button>
         <button type="button" className={mode === 'paste' ? 'active' : ''} onClick={() => setMode('paste')}>
           Paste text
@@ -192,17 +204,20 @@ export function StatementUpload() {
       </div>
 
       {mode === 'file' ? (
-        <label className="statement-upload-picker">
-          Choose PDF or CSV
-          <input
-            type="file"
-            accept="application/pdf,text/csv,.csv"
-            onChange={(e) => {
-              const f = e.target.files?.[0]
-              if (f) handleFileSelect(f)
-            }}
+        <div className="statement-file-mode">
+          <FileDropzone
+            files={files}
+            onFilesChange={setFiles}
+            acceptedTypes={['application/pdf', 'text/csv']}
+            acceptedExtensions={['.csv']}
+            hint="Drag & drop PDF or CSV statements (multiple at once), paste from clipboard, or click to browse"
           />
-        </label>
+          {files.length > 0 && (
+            <button type="button" onClick={handleParseFiles} disabled={parsing} className="statement-parse-btn">
+              {parsing ? 'Reading…' : `Parse ${files.length} statement${files.length === 1 ? '' : 's'}`}
+            </button>
+          )}
+        </div>
       ) : (
         <div className="statement-paste">
           <textarea
@@ -217,10 +232,9 @@ export function StatementUpload() {
         </div>
       )}
 
-      {parsing && <p>Reading file…</p>}
       {error && <p className="statement-upload-error">{error}</p>}
       {savedCount !== null && (
-        <p className="statement-upload-success">Saved {savedCount} expense{savedCount === 1 ? '' : 's'} from this statement.</p>
+        <p className="statement-upload-success">Saved {savedCount} expense{savedCount === 1 ? '' : 's'} from this import.</p>
       )}
 
       {rows.length > 0 && (
@@ -235,6 +249,7 @@ export function StatementUpload() {
                   <th>Amount</th>
                   <th>Type</th>
                   <th>Category</th>
+                  {files.length > 1 && <th>Source</th>}
                 </tr>
               </thead>
               <tbody>
@@ -285,6 +300,7 @@ export function StatementUpload() {
                         ))}
                       </select>
                     </td>
+                    {files.length > 1 && <td className="statement-source-cell">{files[row.sourceIndex]?.name}</td>}
                   </tr>
                 ))}
               </tbody>

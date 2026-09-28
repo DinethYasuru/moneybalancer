@@ -133,3 +133,18 @@
   font-weight: 600;
   color: var(--color-text);
 }
+
+.expense-list-delete {
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: 0 0.2rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.expense-list-delete:hover {
+  color: var(--color-danger);
+}

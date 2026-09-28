@@ -1,23 +1,35 @@
 import { useCallback, useRef, useState, type ClipboardEvent, type DragEvent } from 'react'
 import './FileDropzone.css'
 
-const ACCEPTED_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp', 'image/heic']
+const DEFAULT_ACCEPTED_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp', 'image/heic']
 
 interface FileDropzoneProps {
   files: File[]
   onFilesChange: (files: File[]) => void
+  acceptedTypes?: string[]
+  /** Also match by filename extension, for types browsers report inconsistently (e.g. .csv). */
+  acceptedExtensions?: string[]
+  hint?: string
 }
 
-export function FileDropzone({ files, onFilesChange }: FileDropzoneProps) {
+export function FileDropzone({
+  files,
+  onFilesChange,
+  acceptedTypes = DEFAULT_ACCEPTED_TYPES,
+  acceptedExtensions = [],
+  hint = 'Drag & drop, paste from clipboard, or click to browse',
+}: FileDropzoneProps) {
   const [dragging, setDragging] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const addFiles = useCallback(
     (incoming: FileList | File[]) => {
-      const valid = Array.from(incoming).filter((f) => ACCEPTED_TYPES.includes(f.type))
+      const valid = Array.from(incoming).filter(
+        (f) => acceptedTypes.includes(f.type) || acceptedExtensions.some((ext) => f.name.toLowerCase().endsWith(ext)),
+      )
       if (valid.length) onFilesChange([...files, ...valid])
     },
-    [files, onFilesChange],
+    [files, onFilesChange, acceptedTypes, acceptedExtensions],
   )
 
   function handleDrop(e: DragEvent<HTMLDivElement>) {
@@ -36,6 +48,8 @@ export function FileDropzone({ files, onFilesChange }: FileDropzoneProps) {
     onFilesChange(files.filter((_, i) => i !== index))
   }
 
+  const acceptAttr = [...acceptedTypes, ...acceptedExtensions].join(',')
+
   return (
     <div>
       <div
@@ -50,13 +64,13 @@ export function FileDropzone({ files, onFilesChange }: FileDropzoneProps) {
         onClick={() => inputRef.current?.click()}
         tabIndex={0}
         role="button"
-        aria-label="Upload slip or statement"
+        aria-label="Upload file"
       >
-        <p>Drag & drop a PDF or image, paste from clipboard, or click to browse</p>
+        <p>{hint}</p>
         <input
           ref={inputRef}
           type="file"
-          accept={ACCEPTED_TYPES.join(',')}
+          accept={acceptAttr}
           multiple
           hidden
           onChange={(e) => {

@@ -20,6 +20,7 @@ export function Layout({ children }: { children: ReactNode }) {
             <NavLink to="/analysis">Analysis</NavLink>
             <NavLink to="/goals">Goals</NavLink>
             <NavLink to="/categories">Categories</NavLink>
+            <NavLink to="/data">Data</NavLink>
           </nav>
           <div className="layout-user">
             <span>{user?.email}</span>
@@ -27,7 +28,7 @@ export function Layout({ children }: { children: ReactNode }) {
           </div>
         </div>
       </header>
-      <main className="layout-main">{children}</main>
+      <main className="layout-main page-enter">{children}</main>
     </div>
   )
 }

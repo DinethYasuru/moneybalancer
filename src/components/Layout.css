@@ -13,9 +13,9 @@
 }
 
 .layout-header-inner {
-  max-width: 1080px;
+  max-width: 1600px;
   margin: 0 auto;
-  padding: 0.85rem 1rem;
+  padding: 0.85rem 1.5rem;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -79,8 +79,10 @@
 
 .layout-main {
   flex: 1;
-  padding: 1.25rem 1rem;
+  padding: 1.5rem;
   width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
   box-sizing: border-box;
 }
 

@@ -5,6 +5,7 @@ import './ExpenseList.css'
 interface ExpenseListProps {
   expenses: Expense[]
   categories: Category[]
+  onDelete?: (id: string) => void
 }
 
 function toCsv(expenses: Expense[], categories: Category[]): string {
@@ -15,7 +16,7 @@ function toCsv(expenses: Expense[], categories: Category[]): string {
   return [header, ...rows].map((row) => row.map((cell) => escape(String(cell))).join(',')).join('\n')
 }
 
-export function ExpenseList({ expenses, categories }: ExpenseListProps) {
+export function ExpenseList({ expenses, categories, onDelete }: ExpenseListProps) {
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const categoryOf = (id: string | null) => categories.find((c) => c.id === id)
@@ -94,6 +95,18 @@ export function ExpenseList({ expenses, categories }: ExpenseListProps) {
                   <span>{e.expense_date}</span>
                   <span className="expense-list-amount">{e.currency} {e.amount.toFixed(2)}</span>
                 </div>
+                {onDelete && (
+                  <button
+                    type="button"
+                    className="expense-list-delete"
+                    aria-label="Delete expense"
+                    onClick={() => {
+                      if (confirm('Delete this expense?')) onDelete(e.id)
+                    }}
+                  >
+                    ×
+                  </button>
+                )}
               </li>
             )
           })}

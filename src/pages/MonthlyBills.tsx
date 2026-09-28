@@ -13,6 +13,16 @@ function currentMonthRange() {
   return { start, end }
 }
 
+const QUICK_ADD_PRESETS = [
+  { name: 'Rent', icon: '🏠' },
+  { name: 'Electricity', icon: '⚡' },
+  { name: 'Water', icon: '💧' },
+  { name: 'Internet', icon: '🌐' },
+  { name: 'Subscriptions', icon: '🔁' },
+  { name: 'Transport', icon: '🚗' },
+  { name: 'Health', icon: '➕' },
+]
+
 export function MonthlyBills() {
   const { user } = useAuth()
   const { categories } = useCategories()
@@ -20,6 +30,26 @@ export function MonthlyBills() {
   const [monthExpenses, setMonthExpenses] = useState<Expense[]>([])
   const [showAddForm, setShowAddForm] = useState(false)
   const [payingBillId, setPayingBillId] = useState<string | null>(null)
+  const [quickAdding, setQuickAdding] = useState<string | null>(null)
+  const [justAdded, setJustAdded] = useState<string | null>(null)
+  const [quickAddError, setQuickAddError] = useState<string | null>(null)
+
+  const existingNames = new Set(bills.map((b) => b.name.toLowerCase()))
+  const availablePresets = QUICK_ADD_PRESETS.filter((p) => !existingNames.has(p.name.toLowerCase()))
+
+  async function handleQuickAdd(preset: { name: string; icon: string }) {
+    setQuickAdding(preset.name)
+    setQuickAddError(null)
+    const matchedCategory = categories.find((c) => c.name.toLowerCase() === preset.name.toLowerCase())
+    const { error } = await addBill({ name: preset.name, category_id: matchedCategory?.id ?? null, expected_amount: null, due_day: null })
+    setQuickAdding(null)
+    if (error) {
+      setQuickAddError(error)
+      return
+    }
+    setJustAdded(preset.name)
+    setTimeout(() => setJustAdded((v) => (v === preset.name ? null : v)), 2000)
+  }
 
   async function loadMonthExpenses() {
     if (!user) return
@@ -50,6 +80,26 @@ export function MonthlyBills() {
       <p className="monthly-bills-hint">
         Set up your recurring bills once (rent, electricity, internet…). Each month, log the payment when it's due.
       </p>
+
+      {availablePresets.length > 0 && (
+        <div className="quick-add-row">
+          <span className="quick-add-label">Quick add:</span>
+          <div className="quick-add-chips">
+            {availablePresets.map((preset) => (
+              <button
+                key={preset.name}
+                type="button"
+                className={`quick-add-chip${justAdded === preset.name ? ' quick-add-chip-done' : ''}`}
+                onClick={() => handleQuickAdd(preset)}
+                disabled={quickAdding === preset.name}
+              >
+                {justAdded === preset.name ? '✓' : preset.icon} {justAdded === preset.name ? 'Added' : preset.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {quickAddError && <p className="monthly-bills-error">{quickAddError}</p>}
 
       {showAddForm && (
         <AddBillForm

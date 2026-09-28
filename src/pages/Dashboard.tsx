@@ -29,6 +29,11 @@ export function Dashboard() {
     loadExpenses()
   }, [loadExpenses])
 
+  async function deleteExpense(id: string) {
+    await supabase.from('expenses').delete().eq('id', id)
+    setExpenses((prev) => prev.filter((e) => e.id !== id))
+  }
+
   if (loading || categoriesLoading) return <p>Loading…</p>
 
   const analysis = analyzeExpenses(expenses, categories)
@@ -57,7 +62,7 @@ export function Dashboard() {
 
       <div className="dashboard-grid">
         <ExpenseForm categories={categories} onSaved={loadExpenses} />
-        <ExpenseList expenses={expenses} categories={categories} />
+        <ExpenseList expenses={expenses} categories={categories} onDelete={deleteExpense} />
       </div>
     </div>
   )

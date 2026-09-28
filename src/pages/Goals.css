@@ -1,5 +1,5 @@
 .goals-page {
-  max-width: 760px;
+  max-width: 1100px;
   margin: 0 auto;
 }
 
@@ -142,4 +142,12 @@
   color: white;
   font-size: 0.85rem;
   cursor: pointer;
+}
+
+@media (min-width: 1000px) {
+  .goal-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
 }

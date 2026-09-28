@@ -1,5 +1,5 @@
 .dashboard {
-  max-width: 960px;
+  max-width: 1600px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -58,7 +58,11 @@
     align-items: flex-start;
   }
 
-  .dashboard-grid > * {
+  .dashboard-grid > .expense-form {
+    flex: 0 0 420px;
+  }
+
+  .dashboard-grid > .expense-list {
     flex: 1;
     min-width: 0;
   }
