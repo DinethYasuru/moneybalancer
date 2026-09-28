@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
+import { useCategories } from '../hooks/useCategories'
+import { useSettings } from '../hooks/useSettings'
+import { useMerchantMemory } from '../hooks/useMerchantMemory'
+import { suggestCategoriesForExpenses } from '../lib/ai'
+import type { Expense } from '../lib/types'
 import './Data.css'
 
 interface Counts {
@@ -13,15 +19,35 @@ interface Counts {
   categories: number
 }
 
+interface Suggestion {
+  expense: Expense
+  oldCategoryId: string | null
+  newCategoryId: string | null
+  include: boolean
+}
+
+const BATCH_SIZE = 80
+
 export function Data() {
   const { user } = useAuth()
+  const { categories } = useCategories()
+  const { settings } = useSettings()
+  const { learn } = useMerchantMemory()
   const [counts, setCounts] = useState<Counts | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
 
+  const [scope, setScope] = useState<'uncategorized' | 'all'>('uncategorized')
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([])
+  const [aiError, setAiError] = useState<string | null>(null)
+  const [applying, setApplying] = useState(false)
+
+  const aiReady = settings.ai_config.enabled && !!settings.ai_config.api_key
+  const categoryName = (id: string | null) => categories.find((c) => c.id === id)?.name ?? 'Uncategorized'
+
   const refresh = useCallback(async () => {
     if (!user) return
-    const [expenses, attachments, bankStatements, statementTransactions, recurringBills, goals, categories] = await Promise.all([
+    const [expenses, attachments, bankStatements, statementTransactions, recurringBills, goals, categoriesCount] = await Promise.all([
       supabase.from('expenses').select('id', { count: 'exact', head: true }),
       supabase.from('attachments').select('id', { count: 'exact', head: true }),
       supabase.from('bank_statements').select('id', { count: 'exact', head: true }),
@@ -37,7 +63,7 @@ export function Data() {
       statementTransactions: statementTransactions.count ?? 0,
       recurringBills: recurringBills.count ?? 0,
       goals: goals.count ?? 0,
-      categories: categories.count ?? 0,
+      categories: categoriesCount.count ?? 0,
     })
   }, [user])
 
@@ -93,6 +119,65 @@ export function Data() {
     refresh()
   }
 
+  async function handleReanalyze() {
+    if (!user) return
+    setBusy('reanalyze')
+    setAiError(null)
+    setSuggestions([])
+
+    let query = supabase.from('expenses').select('*')
+    if (scope === 'uncategorized') query = query.is('category_id', null)
+    const { data: expenses } = await query.order('expense_date', { ascending: false })
+
+    if (!expenses || expenses.length === 0) {
+      setBusy(null)
+      setMessage(scope === 'uncategorized' ? 'No uncategorized expenses to re-analyze.' : 'No expenses found.')
+      return
+    }
+
+    try {
+      const categoryNames = categories.map((c) => c.name)
+      const results: Suggestion[] = []
+
+      for (let i = 0; i < expenses.length; i += BATCH_SIZE) {
+        const batch = expenses.slice(i, i + BATCH_SIZE)
+        const suggested = await suggestCategoriesForExpenses(
+          batch.map((e) => ({ id: e.id, description: e.description ?? '(no description)', amount: e.amount })),
+          settings.ai_config,
+          categoryNames,
+        )
+        const byId = new Map(suggested.map((s) => [s.id, s.category]))
+
+        for (const e of batch) {
+          const suggestedName = byId.get(e.id)
+          const match = suggestedName ? categories.find((c) => c.name.toLowerCase() === suggestedName.toLowerCase()) : null
+          if (match && match.id !== e.category_id) {
+            results.push({ expense: e, oldCategoryId: e.category_id, newCategoryId: match.id, include: true })
+          }
+        }
+      }
+
+      setSuggestions(results)
+      if (results.length === 0) setMessage('AI reviewed everything in scope but had no better category suggestions.')
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : 'AI re-analysis failed.')
+    }
+    setBusy(null)
+  }
+
+  async function applySuggestions() {
+    setApplying(true)
+    const included = suggestions.filter((s) => s.include)
+    for (const s of included) {
+      await supabase.from('expenses').update({ category_id: s.newCategoryId }).eq('id', s.expense.id)
+      if (s.expense.description && s.newCategoryId) learn(s.expense.description, s.newCategoryId)
+    }
+    setApplying(false)
+    setMessage(`Updated ${included.length} expense${included.length === 1 ? '' : 's'}.`)
+    setSuggestions([])
+    refresh()
+  }
+
   return (
     <div className="data-page page-enter">
       <h2>Data</h2>
@@ -132,6 +217,62 @@ export function Data() {
       )}
 
       {message && <p className="data-message">{message}</p>}
+
+      <div className="card data-section">
+        <h3>Re-analyze with AI</h3>
+        <p className="data-reanalyze-hint">
+          Re-run AI category suggestions over expenses already in your account — handy for anything imported before
+          AI was set up, or left uncategorized.
+        </p>
+
+        {!aiReady ? (
+          <p className="data-ai-nudge">
+            Enable AI in <Link to="/settings">Settings</Link> first.
+          </p>
+        ) : (
+          <>
+            <div className="data-reanalyze-controls">
+              <label>
+                <input type="radio" checked={scope === 'uncategorized'} onChange={() => setScope('uncategorized')} />
+                Only uncategorized expenses
+              </label>
+              <label>
+                <input type="radio" checked={scope === 'all'} onChange={() => setScope('all')} />
+                All expenses (double-checks existing categories too)
+              </label>
+              <button type="button" onClick={handleReanalyze} disabled={busy !== null}>
+                {busy === 'reanalyze' ? 'Analyzing…' : 'Find suggestions'}
+              </button>
+            </div>
+            {aiError && <p className="data-ai-error">{aiError}</p>}
+          </>
+        )}
+
+        {suggestions.length > 0 && (
+          <>
+            <ul className="data-suggestion-list">
+              {suggestions.map((s, i) => (
+                <li key={s.expense.id}>
+                  <input
+                    type="checkbox"
+                    checked={s.include}
+                    onChange={(e) =>
+                      setSuggestions((prev) => prev.map((p, j) => (j === i ? { ...p, include: e.target.checked } : p)))
+                    }
+                  />
+                  <span className="data-suggestion-desc">{s.expense.description || '(no description)'}</span>
+                  <span className="data-suggestion-change">
+                    {categoryName(s.oldCategoryId)} → <strong>{categoryName(s.newCategoryId)}</strong>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <button type="button" onClick={applySuggestions} disabled={applying}>
+              {applying ? 'Applying…' : `Apply ${suggestions.filter((s) => s.include).length} change(s)`}
+            </button>
+          </>
+        )}
+      </div>
 
       <div className="card data-danger-zone">
         <h3>Clean up</h3>

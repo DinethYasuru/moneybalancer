@@ -123,3 +123,46 @@ export async function extractTransactionsFromImage(
 export async function extractTransactionsFromText(text: string, config: AiConfig, categoryNames: string[]): Promise<AiTransaction[]> {
   return extractAndParse(config, categoryNames, `Extract every transaction from this statement text:\n\n${text}`)
 }
+
+export interface CategorySuggestion {
+  id: string
+  category: string | null
+}
+
+const RECATEGORIZE_INSTRUCTIONS = (categoryNames: string[]) => `You assign the best-matching category to a list of already-recorded expenses, using only their description and amount (no other context is available).
+
+Categories available (use these exact names, or null if genuinely none fit): ${categoryNames.join(', ')}.
+
+Reply with ONLY a JSON array (no markdown, no commentary), one object per expense, using the same "id" you were given:
+[{"id":"<the id you were given>","category":"<one of the category names above, or null>"}]
+
+Rules:
+- Every expense in the input must appear exactly once in your output, in any order.
+- Only use null when the description gives no real signal (e.g. a bare reference number) — otherwise make your best judgment call.`
+
+/**
+ * Re-categorizes a batch of already-saved expenses (e.g. ones left
+ * "Uncategorized" from before AI was set up, or imported before the
+ * category list existed). Sends only id/description/amount — no dates,
+ * no account info — and expects one category suggestion per id back.
+ */
+export async function suggestCategoriesForExpenses(
+  expenses: { id: string; description: string; amount: number }[],
+  config: AiConfig,
+  categoryNames: string[],
+): Promise<CategorySuggestion[]> {
+  const userText = `Expenses:\n${JSON.stringify(expenses.map((e) => ({ id: e.id, description: e.description, amount: e.amount })))}`
+  const reply = await callAi(config, RECATEGORIZE_INSTRUCTIONS(categoryNames), userText)
+  const jsonText = stripCodeFence(reply)
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(jsonText)
+  } catch {
+    throw new Error(`AI did not return valid JSON: ${reply.slice(0, 200)}`)
+  }
+  if (!Array.isArray(parsed)) throw new Error('AI response was not a list of suggestions.')
+
+  return parsed
+    .filter((t): t is Record<string, unknown> => typeof t === 'object' && t !== null && typeof t.id === 'string')
+    .map((t) => ({ id: t.id as string, category: typeof t.category === 'string' ? t.category : null }))
+}
