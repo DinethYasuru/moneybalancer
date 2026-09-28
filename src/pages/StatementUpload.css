@@ -27,6 +27,15 @@
   margin: 0 0 1rem;
 }
 
+.statement-autofill-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  margin-bottom: 1rem;
+}
+
 .statement-ai-nudge a {
   color: var(--color-primary);
   font-weight: 600;

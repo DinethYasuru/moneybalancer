@@ -42,6 +42,7 @@ export function StatementUpload() {
   const [savedCount, setSavedCount] = useState<number | null>(null)
   const [mode, setMode] = useState<'file' | 'paste'>('file')
   const [pasteText, setPasteText] = useState('')
+  const [autoFill, setAutoFill] = useState(false)
 
   const aiReady = settings.ai_config.enabled && !!settings.ai_config.api_key
 
@@ -114,14 +115,19 @@ export function StatementUpload() {
       }
     }
 
-    setRows(flagTransfers(allRows))
+    const flagged = flagTransfers(allRows)
+    setRows(flagged)
     if (failures.length > 0) {
       setError(`Some files had issues — you can still review/save what parsed:\n${failures.join('\n')}`)
     }
     setParsing(false)
+
+    if (autoFill && flagged.length > 0) {
+      await handleConfirm(flagged)
+    }
   }
 
-  function handlePasteParse() {
+  async function handlePasteParse() {
     setError(null)
     setSavedCount(null)
     if (!pasteText.trim()) {
@@ -137,16 +143,23 @@ export function StatementUpload() {
     }
     const pastedFile = new File([pasteText], `pasted-statement-${Date.now()}.csv`, { type: 'text/csv' })
     setFiles([pastedFile])
-    setRows(flagTransfers(categorize(parsed, 0)))
+    const flagged = flagTransfers(categorize(parsed, 0))
+    setRows(flagged)
+
+    if (autoFill && flagged.length > 0) {
+      await handleConfirm(flagged, [pastedFile])
+    }
   }
 
   function updateRow(index: number, patch: Partial<ReviewRow>) {
     setRows((prev) => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)))
   }
 
-  async function handleConfirm() {
-    if (!user || files.length === 0) return
-    const included = rows.filter((r) => r.include)
+  async function handleConfirm(rowsOverride?: ReviewRow[], filesOverride?: File[]) {
+    const sourceRows = rowsOverride ?? rows
+    const sourceFiles = filesOverride ?? files
+    if (!user || sourceFiles.length === 0) return
+    const included = sourceRows.filter((r) => r.include)
     if (included.length === 0) {
       setError('Select at least one transaction to save.')
       return
@@ -161,7 +174,7 @@ export function StatementUpload() {
     const statementIdByFileIndex = new Map<number, string>()
 
     for (const idx of usedSourceIndexes) {
-      const f = files[idx]
+      const f = sourceFiles[idx]
       const storagePath = `${user.id}/${Date.now()}-${idx}-${f.name}`
       const { error: uploadError } = await supabase.storage.from('bank-statements').upload(storagePath, f)
       if (uploadError) {
@@ -257,6 +270,11 @@ export function StatementUpload() {
         </p>
       )}
 
+      <label className="statement-autofill-toggle">
+        <input type="checkbox" checked={autoFill} onChange={(e) => setAutoFill(e.target.checked)} />
+        Save automatically after analyzing — skips the review table, so only turn this on once you trust the results
+      </label>
+
       <div className="statement-mode-toggle">
         <button type="button" className={mode === 'file' ? 'active' : ''} onClick={() => setMode('file')}>
           Upload files
@@ -280,8 +298,12 @@ export function StatementUpload() {
             }
           />
           {files.length > 0 && (
-            <button type="button" onClick={handleParseFiles} disabled={parsing} className="statement-parse-btn">
-              {parsing ? 'Reading…' : `Parse ${files.length} statement${files.length === 1 ? '' : 's'}`}
+            <button type="button" onClick={handleParseFiles} disabled={parsing || saving} className="statement-parse-btn">
+              {parsing
+                ? 'Reading…'
+                : saving
+                  ? 'Saving…'
+                  : `${autoFill ? 'Analyze & save' : 'Parse'} ${files.length} statement${files.length === 1 ? '' : 's'}`}
             </button>
           )}
         </div>
@@ -293,8 +315,8 @@ export function StatementUpload() {
             placeholder={'Paste statement rows here, first line as header, e.g.\nDate, Description, Debit, Credit\n01/09/2026, Salary Deposit, , 150000.00\n03/09/2026, Rent Payment, 45000.00, '}
             rows={6}
           />
-          <button type="button" onClick={handlePasteParse}>
-            Parse pasted text
+          <button type="button" onClick={handlePasteParse} disabled={saving}>
+            {saving ? 'Saving…' : autoFill ? 'Analyze & save' : 'Parse pasted text'}
           </button>
         </div>
       )}
@@ -375,7 +397,7 @@ export function StatementUpload() {
             </table>
           </div>
 
-          <button type="button" onClick={handleConfirm} disabled={saving}>
+          <button type="button" onClick={() => handleConfirm()} disabled={saving}>
             {saving ? 'Saving…' : `Confirm & save ${rows.filter((r) => r.include).length} transactions`}
           </button>
         </>

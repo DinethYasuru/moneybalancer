@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSettings } from '../hooks/useSettings'
 import { testAiConnection } from '../lib/ai'
 import type { AiProvider } from '../lib/types'
@@ -13,14 +13,29 @@ const PROVIDER_DEFAULTS: Record<AiProvider, { base_url: string; model: string }>
 }
 
 export function Settings() {
-  const { settings, updateSettings } = useSettings()
+  const { settings, loading, updateSettings } = useSettings()
   const [saved, setSaved] = useState(false)
   const [aiDraft, setAiDraft] = useState(settings.ai_config)
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null)
   const [testing, setTesting] = useState(false)
 
+  // Settings load asynchronously after first render, so the draft must be
+  // re-synced once the real saved value arrives — otherwise this always
+  // shows the pre-load default (AI off) even when it's actually saved on.
+  useEffect(() => {
+    if (!loading) setAiDraft(settings.ai_config)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading])
+
+  const [saveError, setSaveError] = useState<string | null>(null)
+
   async function handleChange(patch: Partial<typeof settings>) {
-    await updateSettings(patch)
+    const { error } = await updateSettings(patch)
+    if (error) {
+      setSaveError(error)
+      return
+    }
+    setSaveError(null)
     setSaved(true)
     setTimeout(() => setSaved(false), 1500)
   }
@@ -166,6 +181,7 @@ export function Settings() {
       </div>
 
       {saved && <p className="settings-saved">Saved</p>}
+      {saveError && <p className="settings-ai-error">Failed to save: {saveError}</p>}
     </div>
   )
 }
