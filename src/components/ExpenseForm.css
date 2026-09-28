@@ -1,0 +1,79 @@
+.expense-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  background: var(--color-surface, #fff);
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.expense-form h2 {
+  font-size: 1.1rem;
+}
+
+.expense-form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.expense-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  color: #444;
+  flex: 1;
+}
+
+.expense-form-label-only {
+  margin-bottom: -0.4rem;
+}
+
+.expense-form input,
+.expense-form select {
+  padding: 0.6rem 0.7rem;
+  font-size: 1rem;
+  border: 1px solid #d8dbe0;
+  border-radius: 8px;
+  background: #fff;
+  color: #1a1a1a;
+}
+
+.expense-form-checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.expense-form-checkbox input {
+  width: auto;
+}
+
+.expense-form button[type='submit'] {
+  padding: 0.7rem;
+  font-size: 1rem;
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  color: white;
+  cursor: pointer;
+}
+
+.expense-form button[type='submit']:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.expense-form-error {
+  color: #c0392b;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+@media (min-width: 640px) {
+  .expense-form-row {
+    flex-direction: row;
+  }
+}
