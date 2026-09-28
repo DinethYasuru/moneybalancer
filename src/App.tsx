@@ -11,6 +11,9 @@ import { Categories } from './pages/Categories'
 import { MonthlyBills } from './pages/MonthlyBills'
 import { Goals } from './pages/Goals'
 import { Data } from './pages/Data'
+import { Income } from './pages/Income'
+import { Debts } from './pages/Debts'
+import { Settings } from './pages/Settings'
 
 const StatementUpload = lazy(() => import('./pages/StatementUpload').then((m) => ({ default: m.StatementUpload })))
 
@@ -89,6 +92,36 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <Data />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/income"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Income />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/debts"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Debts />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Settings />
                 </Layout>
               </ProtectedRoute>
             }

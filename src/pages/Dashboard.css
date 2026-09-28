@@ -46,6 +46,23 @@
   color: var(--color-success);
 }
 
+.stat-value-sub {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.dashboard-income-nudge {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.dashboard-income-nudge a {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
 .dashboard-grid {
   display: flex;
   flex-direction: column;

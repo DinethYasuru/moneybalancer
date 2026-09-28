@@ -17,6 +17,7 @@ export interface Expense {
   expense_date: string
   is_recurring: boolean
   recurring_bill_id: string | null
+  debt_id: string | null
   created_at: string
 }
 
@@ -46,4 +47,42 @@ export interface SavingsGoal {
   target_date: string | null
   current_amount: number
   created_at: string
+}
+
+export type IncomeFrequency = 'monthly' | 'weekly' | 'biweekly' | 'one_time'
+
+export interface Income {
+  id: string
+  source: string
+  amount: number
+  frequency: IncomeFrequency
+  received_date: string
+  is_recurring: boolean
+  created_at: string
+}
+
+export type DebtType = 'loan' | 'credit_card' | 'personal_lending' | 'other'
+export type DeductionTrigger = 'fixed_date' | 'on_income'
+
+export interface Debt {
+  id: string
+  name: string
+  debt_type: DebtType
+  lender: string | null
+  principal_amount: number | null
+  current_balance: number
+  interest_rate: number | null
+  minimum_payment: number | null
+  due_day: number | null
+  is_active: boolean
+  auto_deduct: boolean
+  deduction_trigger: DeductionTrigger | null
+  created_at: string
+}
+
+export interface UserSettings {
+  user_id: string
+  currency: string
+  accent_color: string
+  dashboard_widgets: { income: boolean; debt: boolean; safeToSpend: boolean }
 }

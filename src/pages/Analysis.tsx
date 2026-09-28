@@ -2,14 +2,21 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { useCategories } from '../hooks/useCategories'
-import { analyzeExpenses, generateInsights } from '../lib/analysis'
+import { useIncome } from '../hooks/useIncome'
+import { useDebts } from '../hooks/useDebts'
+import { analyzeExpenses, generateInsights, type Insight, type InsightType } from '../lib/analysis'
+import { generateCashflowInsights } from '../lib/cashflow'
 import { InsightCards } from '../components/InsightCards'
 import type { Expense } from '../lib/types'
 import './Analysis.css'
 
+const SEVERITY: Record<InsightType, number> = { danger: 0, warning: 1, tip: 2, success: 3 }
+
 export function Analysis() {
   const { user } = useAuth()
   const { categories } = useCategories()
+  const { income } = useIncome()
+  const { debts } = useDebts()
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -27,7 +34,10 @@ export function Analysis() {
   if (loading) return <p>Loading…</p>
 
   const analysis = analyzeExpenses(expenses, categories)
-  const insights = generateInsights(expenses, categories)
+  const cashflowInsights = generateCashflowInsights(income, debts, expenses, analysis.currentTotal)
+  const insights: Insight[] = [...cashflowInsights, ...generateInsights(expenses, categories)].sort(
+    (a, b) => SEVERITY[a.type] - SEVERITY[b.type],
+  )
   const essentialPct = analysis.currentTotal > 0 ? (analysis.essentialTotal / analysis.currentTotal) * 100 : 0
   const discretionaryPct = 100 - essentialPct
   const budgeted = analysis.breakdown.filter((b) => b.monthlyBudget != null)
