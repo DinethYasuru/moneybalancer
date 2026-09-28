@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { parseStatementPdf, parseStatementCsv, parseStatementText, type ParsedTransaction } from '../lib/statementParser'
-import { guessCategoryName } from '../lib/categorize'
 import type { Category } from '../lib/types'
 import { useCategories } from '../hooks/useCategories'
+import { useMerchantMemory } from '../hooks/useMerchantMemory'
 import './StatementUpload.css'
 
 interface ReviewRow extends ParsedTransaction {
@@ -15,6 +15,7 @@ interface ReviewRow extends ParsedTransaction {
 export function StatementUpload() {
   const { user } = useAuth()
   const { categories } = useCategories()
+  const { guessCategoryId, learn } = useMerchantMemory()
   const [file, setFile] = useState<File | null>(null)
   const [rows, setRows] = useState<ReviewRow[]>([])
   const [parsing, setParsing] = useState(false)
@@ -24,17 +25,11 @@ export function StatementUpload() {
   const [mode, setMode] = useState<'file' | 'paste'>('file')
   const [pasteText, setPasteText] = useState('')
 
-  function guessCategoryId(description: string): string {
-    const guessedName = guessCategoryName(description)
-    const match = guessedName ? categories.find((c) => c.name.toLowerCase() === guessedName.toLowerCase()) : null
-    return match?.id ?? categories.find((c) => c.name === 'Other')?.id ?? categories[0]?.id ?? ''
-  }
-
   function applyParsed(parsed: ParsedTransaction[], emptyMessage: string) {
     setRows(
       parsed.map((p) => ({
         ...p,
-        categoryId: p.direction === 'debit' ? guessCategoryId(p.description) : '',
+        categoryId: p.direction === 'debit' ? guessCategoryId(p.description, categories) : '',
         include: true,
       })),
     )
@@ -166,6 +161,12 @@ export function StatementUpload() {
 
     const savedExpenses = debitRows.length
 
+    // Remember each merchant's chosen category for next time, so imports and
+    // manual entries get smarter the more you use the app.
+    for (const { row } of debitRows) {
+      if (row.categoryId) learn(row.description, row.categoryId)
+    }
+
     setSaving(false)
     setSavedCount(savedExpenses)
     setFile(null)
@@ -263,7 +264,7 @@ export function StatementUpload() {
                           const direction = e.target.value as 'debit' | 'credit'
                           updateRow(i, {
                             direction,
-                            categoryId: direction === 'debit' && !row.categoryId ? guessCategoryId(row.description) : row.categoryId,
+                            categoryId: direction === 'debit' && !row.categoryId ? guessCategoryId(row.description, categories) : row.categoryId,
                           })
                         }}
                       >

@@ -27,6 +27,19 @@
   flex: 1;
 }
 
+.expense-form-auto-tag {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-accent);
+  background: rgba(45, 212, 191, 0.14);
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  margin-left: 0.35rem;
+}
+
 .expense-form-label-only {
   margin-bottom: -0.4rem;
 }

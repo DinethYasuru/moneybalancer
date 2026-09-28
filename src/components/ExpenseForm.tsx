@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
+import { useMerchantMemory } from '../hooks/useMerchantMemory'
 import type { Category } from '../lib/types'
 import { FileDropzone } from './FileDropzone'
 import './ExpenseForm.css'
@@ -12,14 +13,26 @@ interface ExpenseFormProps {
 
 export function ExpenseForm({ categories, onSaved }: ExpenseFormProps) {
   const { user } = useAuth()
+  const { guessCategoryId, learn } = useMerchantMemory()
   const [amount, setAmount] = useState('')
   const [categoryId, setCategoryId] = useState(categories[0]?.id ?? '')
+  const [categoryTouched, setCategoryTouched] = useState(false)
+  const [autoSuggested, setAutoSuggested] = useState(false)
   const [description, setDescription] = useState('')
   const [expenseDate, setExpenseDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [isRecurring, setIsRecurring] = useState(false)
   const [files, setFiles] = useState<File[]>([])
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  function handleDescriptionBlur() {
+    if (categoryTouched || !description.trim()) return
+    const guess = guessCategoryId(description, categories)
+    if (guess) {
+      setCategoryId(guess)
+      setAutoSuggested(true)
+    }
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -63,10 +76,14 @@ export function ExpenseForm({ categories, onSaved }: ExpenseFormProps) {
       })
     }
 
+    if (description.trim() && categoryId) learn(description, categoryId)
+
     setSubmitting(false)
     setAmount('')
     setDescription('')
     setFiles([])
+    setCategoryTouched(false)
+    setAutoSuggested(false)
     onSaved()
   }
 
@@ -88,8 +105,15 @@ export function ExpenseForm({ categories, onSaved }: ExpenseFormProps) {
         </label>
 
         <label>
-          Category
-          <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+          Category {autoSuggested && <span className="expense-form-auto-tag">auto</span>}
+          <select
+            value={categoryId}
+            onChange={(e) => {
+              setCategoryId(e.target.value)
+              setCategoryTouched(true)
+              setAutoSuggested(false)
+            }}
+          >
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.icon} {c.name}
@@ -113,7 +137,16 @@ export function ExpenseForm({ categories, onSaved }: ExpenseFormProps) {
 
       <label>
         Description
-        <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="e.g. September electricity bill" />
+        <input
+          type="text"
+          value={description}
+          onChange={(e) => {
+            setDescription(e.target.value)
+            if (!e.target.value.trim()) setAutoSuggested(false)
+          }}
+          onBlur={handleDescriptionBlur}
+          placeholder="e.g. September electricity bill"
+        />
       </label>
 
       <label className="expense-form-label-only">Slip / receipt (optional)</label>
