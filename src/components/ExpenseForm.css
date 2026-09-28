@@ -35,7 +35,7 @@
 .expense-form select {
   padding: 0.6rem 0.7rem;
   font-size: 1rem;
-  border: 1px solid #d8dbe0;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   background: #fff;
   color: #1a1a1a;
@@ -56,7 +56,7 @@
   font-size: 1rem;
   border: none;
   border-radius: 8px;
-  background: #2563eb;
+  background: var(--color-primary);
   color: white;
   cursor: pointer;
 }
@@ -67,7 +67,7 @@
 }
 
 .expense-form-error {
-  color: #c0392b;
+  color: var(--color-danger);
   font-size: 0.85rem;
   margin: 0;
 }

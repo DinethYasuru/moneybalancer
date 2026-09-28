@@ -71,7 +71,7 @@ export function ExpenseForm({ categories, onSaved }: ExpenseFormProps) {
   }
 
   return (
-    <form className="expense-form" onSubmit={handleSubmit}>
+    <form className="expense-form card" onSubmit={handleSubmit}>
       <h2>Add expense</h2>
 
       <div className="expense-form-row">
@@ -92,7 +92,7 @@ export function ExpenseForm({ categories, onSaved }: ExpenseFormProps) {
           <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.name}
+                {c.icon} {c.name}
               </option>
             ))}
           </select>

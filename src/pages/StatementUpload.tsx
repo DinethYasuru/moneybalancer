@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
-import { parseStatementPdf, type ParsedTransaction } from '../lib/statementParser'
+import { parseStatementPdf, parseStatementCsv, parseStatementText, type ParsedTransaction } from '../lib/statementParser'
 import type { Category } from '../lib/types'
 import { useCategories } from '../hooks/useCategories'
 import './StatementUpload.css'
@@ -20,6 +20,14 @@ export function StatementUpload() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [savedCount, setSavedCount] = useState<number | null>(null)
+  const [mode, setMode] = useState<'file' | 'paste'>('file')
+  const [pasteText, setPasteText] = useState('')
+
+  function applyParsed(parsed: ParsedTransaction[], emptyMessage: string) {
+    const defaultCategoryId = categories[0]?.id ?? ''
+    setRows(parsed.map((p) => ({ ...p, categoryId: defaultCategoryId, include: true })))
+    if (parsed.length === 0) setError(emptyMessage)
+  }
 
   async function handleFileSelect(f: File) {
     setFile(f)
@@ -27,17 +35,35 @@ export function StatementUpload() {
     setSavedCount(null)
     setParsing(true)
     try {
-      const parsed = await parseStatementPdf(f)
-      const defaultCategoryId = categories[0]?.id ?? ''
-      setRows(parsed.map((p) => ({ ...p, categoryId: defaultCategoryId, include: true })))
-      if (parsed.length === 0) {
-        setError('No transactions could be automatically detected. This statement layout may not be supported — try a different export, or check back once parsing improves.')
-      }
+      const isCsv = f.type === 'text/csv' || f.name.toLowerCase().endsWith('.csv')
+      const parsed = isCsv ? await parseStatementCsv(f) : await parseStatementPdf(f)
+      applyParsed(
+        parsed,
+        isCsv
+          ? 'No transactions could be detected in this CSV. Make sure it has a header row with Date/Description/Amount (or Debit/Credit) columns.'
+          : 'No transactions could be automatically detected. This statement layout may not be supported — try a different export, or check back once parsing improves.',
+      )
     } catch {
-      setError('Could not read this PDF. Make sure it is a text-based statement, not a scanned image.')
+      setError('Could not read this file. Make sure it is a text-based PDF statement or a CSV export, not a scanned image.')
     } finally {
       setParsing(false)
     }
+  }
+
+  function handlePasteParse() {
+    setError(null)
+    setSavedCount(null)
+    if (!pasteText.trim()) {
+      setError('Paste some statement text first.')
+      return
+    }
+    const parsed = parseStatementText(pasteText)
+    applyParsed(
+      parsed,
+      'No transactions could be detected in the pasted text. Make sure the first line is a header row (Date, Description, Amount or Debit/Credit) and columns are separated by commas or tabs.',
+    )
+    // Treat the pasted text as a "file" so it uploads to storage the same way as a real CSV.
+    setFile(new File([pasteText], `pasted-statement-${Date.now()}.csv`, { type: 'text/csv' }))
   }
 
   function updateRow(index: number, patch: Partial<ReviewRow>) {
@@ -117,29 +143,53 @@ export function StatementUpload() {
     setSavedCount(savedExpenses)
     setFile(null)
     setRows([])
+    setPasteText('')
   }
 
   return (
     <div className="statement-upload">
       <h2>Upload bank statement</h2>
       <p className="statement-upload-hint">
-        Upload a PDF bank statement. We'll try to detect transactions automatically — review and fix anything
-        before it's saved as real expenses.
+        Upload a PDF or CSV bank statement, or paste statement text copied from your bank's website. We'll try to
+        detect transactions automatically — review and fix anything before it's saved as real expenses.
       </p>
 
-      <label className="statement-upload-picker">
-        Choose PDF
-        <input
-          type="file"
-          accept="application/pdf"
-          onChange={(e) => {
-            const f = e.target.files?.[0]
-            if (f) handleFileSelect(f)
-          }}
-        />
-      </label>
+      <div className="statement-mode-toggle">
+        <button type="button" className={mode === 'file' ? 'active' : ''} onClick={() => setMode('file')}>
+          Upload file
+        </button>
+        <button type="button" className={mode === 'paste' ? 'active' : ''} onClick={() => setMode('paste')}>
+          Paste text
+        </button>
+      </div>
 
-      {parsing && <p>Reading PDF…</p>}
+      {mode === 'file' ? (
+        <label className="statement-upload-picker">
+          Choose PDF or CSV
+          <input
+            type="file"
+            accept="application/pdf,text/csv,.csv"
+            onChange={(e) => {
+              const f = e.target.files?.[0]
+              if (f) handleFileSelect(f)
+            }}
+          />
+        </label>
+      ) : (
+        <div className="statement-paste">
+          <textarea
+            value={pasteText}
+            onChange={(e) => setPasteText(e.target.value)}
+            placeholder={'Paste statement rows here, first line as header, e.g.\nDate, Description, Debit, Credit\n01/09/2026, Salary Deposit, , 150000.00\n03/09/2026, Rent Payment, 45000.00, '}
+            rows={6}
+          />
+          <button type="button" onClick={handlePasteParse}>
+            Parse pasted text
+          </button>
+        </div>
+      )}
+
+      {parsing && <p>Reading file…</p>}
       {error && <p className="statement-upload-error">{error}</p>}
       {savedCount !== null && (
         <p className="statement-upload-success">Saved {savedCount} expense{savedCount === 1 ? '' : 's'} from this statement.</p>
@@ -193,7 +243,7 @@ export function StatementUpload() {
                       >
                         {categories.map((c: Category) => (
                           <option key={c.id} value={c.id}>
-                            {c.name}
+                            {c.icon} {c.name}
                           </option>
                         ))}
                       </select>

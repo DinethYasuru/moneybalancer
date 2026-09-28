@@ -1,0 +1,208 @@
+.monthly-bills {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.monthly-bills-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.monthly-bills-header h2 {
+  font-size: 1.2rem;
+}
+
+.monthly-bills-header button {
+  padding: 0.5rem 0.9rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--color-primary);
+  color: white;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.monthly-bills-hint {
+  color: var(--color-text-muted);
+  font-size: 0.88rem;
+  margin: 0.3rem 0 1.25rem;
+}
+
+.monthly-bills-empty {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.monthly-bills-error {
+  color: var(--color-danger);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.add-bill-form {
+  padding: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  margin-bottom: 1.25rem;
+}
+
+.add-bill-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.add-bill-form input,
+.add-bill-form select {
+  padding: 0.55rem 0.65rem;
+  font-size: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--color-text);
+}
+
+.add-bill-form button[type='submit'] {
+  align-self: flex-start;
+  padding: 0.6rem 1.1rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--color-primary);
+  color: white;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.bill-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.bill-row {
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.bill-main {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.bill-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.bill-name {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.bill-due,
+.bill-expected {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.bill-status {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.bill-paid {
+  color: var(--color-success);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.bill-unpaid {
+  color: var(--color-warning);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.bill-status button {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.82rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.bill-status button:first-of-type:not(.bill-delete) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.bill-delete {
+  color: var(--color-danger);
+  border-color: rgba(224, 67, 92, 0.3) !important;
+  margin-left: auto;
+}
+
+.log-payment-form {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  background: var(--color-surface-alt);
+  padding: 0.75rem;
+  border-radius: 10px;
+}
+
+.log-payment-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.log-payment-form input {
+  padding: 0.5rem 0.6rem;
+  font-size: 0.95rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+.log-payment-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.log-payment-actions button[type='submit'] {
+  padding: 0.5rem 0.9rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--color-primary);
+  color: white;
+  cursor: pointer;
+}
+
+.log-payment-actions button[type='button'] {
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+}

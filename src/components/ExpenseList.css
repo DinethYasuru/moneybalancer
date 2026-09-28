@@ -19,7 +19,7 @@
 .expense-list-total {
   font-size: 0.9rem;
   font-weight: 600;
-  color: #2563eb;
+  color: var(--color-primary);
 }
 
 .expense-list-empty {
@@ -59,6 +59,13 @@
 
 .expense-list-category {
   font-weight: 600;
+  font-size: 0.8rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  width: fit-content;
 }
 
 .expense-list-desc {

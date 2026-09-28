@@ -1,8 +1,21 @@
 :root {
-  --color-bg: #f5f6f8;
+  --color-bg: #eef1f8;
   --color-surface: #ffffff;
-  --color-text: #1a1a1a;
-  --color-border: #d8dbe0;
+  --color-surface-alt: #f6f7fb;
+  --color-text: #1c1d2b;
+  --color-text-muted: #666a80;
+  --color-border: #e0e3ee;
+
+  --color-primary: #5b4fe8;
+  --color-primary-dark: #4338ca;
+  --color-primary-light: #ede9fe;
+  --color-accent: #14b8a6;
+  --color-danger: #e0435c;
+  --color-success: #17a673;
+  --color-warning: #f0a93a;
+
+  --gradient-header: linear-gradient(135deg, #4338ca 0%, #5b4fe8 55%, #7c6ef0 100%);
+  --shadow-card: 0 1px 2px rgba(28, 29, 43, 0.06), 0 4px 14px rgba(28, 29, 43, 0.06);
 
   font: 16px/1.5 system-ui, 'Segoe UI', Roboto, sans-serif;
   color: var(--color-text);
@@ -34,4 +47,10 @@ h3 {
 
 button {
   font-family: inherit;
+}
+
+.card {
+  background: var(--color-surface);
+  border-radius: 14px;
+  box-shadow: var(--shadow-card);
 }

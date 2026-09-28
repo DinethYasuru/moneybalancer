@@ -14,7 +14,17 @@ export interface Expense {
   description: string | null
   expense_date: string
   is_recurring: boolean
+  recurring_bill_id: string | null
   created_at: string
+}
+
+export interface RecurringBill {
+  id: string
+  category_id: string | null
+  name: string
+  expected_amount: number | null
+  due_day: number | null
+  is_active: boolean
 }
 
 export interface Attachment {

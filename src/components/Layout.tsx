@@ -15,8 +15,10 @@ export function Layout({ children }: { children: ReactNode }) {
             <NavLink to="/" end>
               Expenses
             </NavLink>
+            <NavLink to="/bills">Monthly Bills</NavLink>
             <NavLink to="/statements">Statements</NavLink>
             <NavLink to="/analysis">Analysis</NavLink>
+            <NavLink to="/categories">Categories</NavLink>
           </nav>
           <div className="layout-user">
             <span>{user?.email}</span>

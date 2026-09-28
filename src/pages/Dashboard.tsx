@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import type { Expense } from '../lib/types'
 import { useCategories } from '../hooks/useCategories'
+import { analyzeExpenses } from '../lib/analysis'
 import { ExpenseForm } from '../components/ExpenseForm'
 import { ExpenseList } from '../components/ExpenseList'
 import './Dashboard.css'
@@ -30,10 +31,34 @@ export function Dashboard() {
 
   if (loading || categoriesLoading) return <p>Loading…</p>
 
+  const analysis = analyzeExpenses(expenses, categories)
+  const topCategory = analysis.breakdown[0]
+
   return (
-    <div className="dashboard-grid">
-      <ExpenseForm categories={categories} onSaved={loadExpenses} />
-      <ExpenseList expenses={expenses} categories={categories} />
+    <div className="dashboard">
+      <div className="dashboard-stats">
+        <div className="stat-card card">
+          <span className="stat-label">This month</span>
+          <span className="stat-value">{analysis.currentTotal.toFixed(2)}</span>
+        </div>
+        <div className="stat-card card">
+          <span className="stat-label">Top category</span>
+          <span className="stat-value stat-value-sm">
+            {topCategory ? `${topCategory.categoryName} · ${topCategory.currentTotal.toFixed(2)}` : '—'}
+          </span>
+        </div>
+        <div className="stat-card card">
+          <span className="stat-label">vs last month</span>
+          <span className={`stat-value ${analysis.totalChangePct !== null && analysis.totalChangePct > 0 ? 'stat-up' : 'stat-down'}`}>
+            {analysis.totalChangePct === null ? '—' : `${(analysis.totalChangePct * 100).toFixed(0)}%`}
+          </span>
+        </div>
+      </div>
+
+      <div className="dashboard-grid">
+        <ExpenseForm categories={categories} onSaved={loadExpenses} />
+        <ExpenseList expenses={expenses} categories={categories} />
+      </div>
     </div>
   )
 }

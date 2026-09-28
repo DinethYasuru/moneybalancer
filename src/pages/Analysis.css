@@ -42,11 +42,11 @@
 }
 
 .analysis-up {
-  color: #c0392b;
+  color: var(--color-danger);
 }
 
 .analysis-down {
-  color: #1a7f37;
+  color: var(--color-success);
 }
 
 .analysis-suggestions {

@@ -87,6 +87,125 @@ function parseLine(line: string): ParsedTransaction | null {
   return { date: isoDate, description, amount, direction }
 }
 
+const HEADER_ALIASES: Record<string, string[]> = {
+  date: ['date', 'txn date', 'transaction date', 'value date', 'posting date'],
+  description: ['description', 'narrative', 'particulars', 'details', 'remarks', 'transaction details'],
+  debit: ['debit', 'withdrawal', 'debit amount', 'dr'],
+  credit: ['credit', 'deposit', 'credit amount', 'cr'],
+  amount: ['amount', 'transaction amount', 'value'],
+  type: ['type', 'dr/cr', 'transaction type', 'cr/dr'],
+}
+
+function findColumn(headers: string[], key: keyof typeof HEADER_ALIASES): number {
+  const aliases = HEADER_ALIASES[key]
+  return headers.findIndex((h) => aliases.includes(h.trim().toLowerCase()))
+}
+
+/**
+ * Minimal delimited-line splitter that respects double-quoted fields
+ * containing the delimiter. Used for both comma-separated CSV files and
+ * tab-separated text pasted from a spreadsheet or bank web portal.
+ */
+function splitDelimitedLine(line: string, delimiter: string): string[] {
+  const fields: string[] = []
+  let current = ''
+  let inQuotes = false
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i]
+    if (inQuotes) {
+      if (char === '"' && line[i + 1] === '"') {
+        current += '"'
+        i++
+      } else if (char === '"') {
+        inQuotes = false
+      } else {
+        current += char
+      }
+    } else if (char === '"') {
+      inQuotes = true
+    } else if (char === delimiter) {
+      fields.push(current)
+      current = ''
+    } else {
+      current += char
+    }
+  }
+  fields.push(current)
+  return fields.map((f) => f.trim())
+}
+
+function detectDelimiter(headerLine: string): string {
+  if (headerLine.includes('\t')) return '\t'
+  if (headerLine.includes(',')) return ','
+  if (headerLine.includes(';')) return ';'
+  return ','
+}
+
+export function parseStatementText(text: string): ParsedTransaction[] {
+  const lines = text.split(/\r\n|\n/).filter((l) => l.trim().length > 0)
+  if (lines.length < 2) return []
+
+  const delimiter = detectDelimiter(lines[0])
+  const splitCsvLine = (line: string) => splitDelimitedLine(line, delimiter)
+  const headers = splitCsvLine(lines[0]).map((h) => h.toLowerCase())
+  const dateCol = findColumn(headers, 'date')
+  const descCol = findColumn(headers, 'description')
+  const debitCol = findColumn(headers, 'debit')
+  const creditCol = findColumn(headers, 'credit')
+  const amountCol = findColumn(headers, 'amount')
+  const typeCol = findColumn(headers, 'type')
+
+  if (dateCol === -1) return []
+
+  const transactions: ParsedTransaction[] = []
+
+  for (const line of lines.slice(1)) {
+    const fields = splitCsvLine(line)
+    const isoDate = normalizeDate(fields[dateCol]?.trim())
+    if (!isoDate) continue
+
+    const description = descCol !== -1 ? fields[descCol] ?? '' : ''
+
+    let amount: number | null = null
+    let direction: 'debit' | 'credit' | null = null
+
+    if (debitCol !== -1 || creditCol !== -1) {
+      const debitAmount = debitCol !== -1 ? parseAmount(fields[debitCol] ?? '') : null
+      const creditAmount = creditCol !== -1 ? parseAmount(fields[creditCol] ?? '') : null
+      if (debitAmount && debitAmount > 0) {
+        amount = debitAmount
+        direction = 'debit'
+      } else if (creditAmount && creditAmount > 0) {
+        amount = creditAmount
+        direction = 'credit'
+      }
+    } else if (amountCol !== -1) {
+      const raw = fields[amountCol] ?? ''
+      const parsed = parseAmount(raw.replace(/[()]/g, ''))
+      if (parsed !== null) {
+        amount = Math.abs(parsed)
+        if (typeCol !== -1) {
+          direction = /^cr/i.test(fields[typeCol] ?? '') ? 'credit' : 'debit'
+        } else {
+          direction = raw.trim().startsWith('-') || raw.trim().startsWith('(') ? 'debit' : 'credit'
+        }
+      }
+    }
+
+    if (amount === null || amount <= 0 || !direction) continue
+
+    transactions.push({ date: isoDate, description: description.trim() || '(no description)', amount, direction })
+  }
+
+  return transactions
+}
+
+export async function parseStatementCsv(file: File): Promise<ParsedTransaction[]> {
+  const text = await file.text()
+  return parseStatementText(text)
+}
+
 export async function parseStatementPdf(file: File): Promise<ParsedTransaction[]> {
   const buffer = await file.arrayBuffer()
   const pdf = await pdfjsLib.getDocument({ data: buffer }).promise

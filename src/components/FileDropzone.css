@@ -1,5 +1,5 @@
 .dropzone {
-  border: 2px dashed var(--color-border, #d8dbe0);
+  border: 2px dashed var(--color-border);
   border-radius: 10px;
   padding: 1.5rem 1rem;
   text-align: center;
@@ -11,13 +11,13 @@
 
 .dropzone:hover,
 .dropzone:focus-visible {
-  border-color: #2563eb;
-  background: #f5f8ff;
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
 }
 
 .dropzone-active {
-  border-color: #2563eb;
-  background: #eef3ff;
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
 }
 
 .dropzone-file-list {
@@ -49,5 +49,5 @@
 }
 
 .dropzone-file-list button:hover {
-  color: #c0392b;
+  color: var(--color-danger);
 }
