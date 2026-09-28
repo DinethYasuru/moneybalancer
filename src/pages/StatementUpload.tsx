@@ -1,10 +1,13 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { parseStatementPdf, parseStatementCsv, parseStatementText, type ParsedTransaction } from '../lib/statementParser'
+import { extractTransactionsFromImage, type AiTransaction } from '../lib/ai'
 import type { Category } from '../lib/types'
 import { useCategories } from '../hooks/useCategories'
 import { useMerchantMemory } from '../hooks/useMerchantMemory'
+import { useSettings } from '../hooks/useSettings'
 import { FileDropzone } from '../components/FileDropzone'
 import './StatementUpload.css'
 
@@ -14,10 +17,21 @@ interface ReviewRow extends ParsedTransaction {
   sourceIndex: number
 }
 
+const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/heic']
+
+async function fileToBase64(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer()
+  const bytes = new Uint8Array(buffer)
+  let binary = ''
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+  return btoa(binary)
+}
+
 export function StatementUpload() {
   const { user } = useAuth()
   const { categories } = useCategories()
   const { guessCategoryId, learn } = useMerchantMemory()
+  const { settings } = useSettings()
   const [files, setFiles] = useState<File[]>([])
   const [rows, setRows] = useState<ReviewRow[]>([])
   const [parsing, setParsing] = useState(false)
@@ -27,13 +41,19 @@ export function StatementUpload() {
   const [mode, setMode] = useState<'file' | 'paste'>('file')
   const [pasteText, setPasteText] = useState('')
 
-  function categorize(parsed: ParsedTransaction[], sourceIndex: number): ReviewRow[] {
-    return parsed.map((p) => ({
-      ...p,
-      categoryId: p.direction === 'debit' ? guessCategoryId(p.description, categories) : '',
-      include: true,
-      sourceIndex,
-    }))
+  const aiReady = settings.ai_config.enabled && !!settings.ai_config.api_key
+
+  function categorize(parsed: ParsedTransaction[], sourceIndex: number, aiCategories?: (string | null)[]): ReviewRow[] {
+    return parsed.map((p, i) => {
+      const aiCategoryName = aiCategories?.[i]
+      const aiMatch = aiCategoryName ? categories.find((c) => c.name.toLowerCase() === aiCategoryName.toLowerCase()) : null
+      return {
+        ...p,
+        categoryId: p.direction === 'debit' ? aiMatch?.id ?? guessCategoryId(p.description, categories) : '',
+        include: true,
+        sourceIndex,
+      }
+    })
   }
 
   async function handleParseFiles() {
@@ -48,12 +68,35 @@ export function StatementUpload() {
     for (let i = 0; i < files.length; i++) {
       const f = files[i]
       const isCsv = f.type === 'text/csv' || f.name.toLowerCase().endsWith('.csv')
+      const isImage = IMAGE_TYPES.includes(f.type)
       try {
-        const parsed = isCsv ? await parseStatementCsv(f) : await parseStatementPdf(f)
-        if (parsed.length === 0) failures.push(`${f.name}: no transactions detected`)
-        allRows.push(...categorize(parsed, i))
-      } catch {
-        failures.push(`${f.name}: could not read this file`)
+        if (isImage) {
+          if (!aiReady) {
+            failures.push(`${f.name}: this is a photo — enable AI in Settings to read photographed slips/passbooks`)
+            continue
+          }
+          const base64 = await fileToBase64(f)
+          const aiRows: AiTransaction[] = await extractTransactionsFromImage(
+            base64,
+            f.type,
+            settings.ai_config,
+            categories.map((c) => c.name),
+          )
+          if (aiRows.length === 0) failures.push(`${f.name}: AI found no transactions in this image`)
+          const parsed: ParsedTransaction[] = aiRows.map((r) => ({
+            date: r.date,
+            description: r.description,
+            amount: r.amount,
+            direction: r.direction,
+          }))
+          allRows.push(...categorize(parsed, i, aiRows.map((r) => r.category)))
+        } else {
+          const parsed = isCsv ? await parseStatementCsv(f) : await parseStatementPdf(f)
+          if (parsed.length === 0) failures.push(`${f.name}: no transactions detected`)
+          allRows.push(...categorize(parsed, i))
+        }
+      } catch (err) {
+        failures.push(`${f.name}: ${err instanceof Error ? err.message : 'could not read this file'}`)
       }
     }
 
@@ -189,10 +232,16 @@ export function StatementUpload() {
     <div className="statement-upload page-enter">
       <h2>Upload bank statements</h2>
       <p className="statement-upload-hint">
-        Upload one or more PDF/CSV bank statements — handy if you're importing multiple passbooks at once — or paste
-        statement text copied from your bank's website. We'll try to detect transactions automatically; review and
-        fix anything before it's saved as real expenses.
+        Upload one or more PDF/CSV bank statements, or photos of passbook pages/slips — handy if you're importing
+        multiple passbooks at once — or paste statement text copied from your bank's website. We'll try to detect
+        transactions automatically; review and fix anything before it's saved as real expenses.
       </p>
+      {!aiReady && (
+        <p className="statement-ai-nudge">
+          💡 Photos of slips/passbooks need AI to read — <Link to="/settings">enable it in Settings</Link> to import
+          those too.
+        </p>
+      )}
 
       <div className="statement-mode-toggle">
         <button type="button" className={mode === 'file' ? 'active' : ''} onClick={() => setMode('file')}>
@@ -208,9 +257,13 @@ export function StatementUpload() {
           <FileDropzone
             files={files}
             onFilesChange={setFiles}
-            acceptedTypes={['application/pdf', 'text/csv']}
+            acceptedTypes={['application/pdf', 'text/csv', ...IMAGE_TYPES]}
             acceptedExtensions={['.csv']}
-            hint="Drag & drop PDF or CSV statements (multiple at once), paste from clipboard, or click to browse"
+            hint={
+              aiReady
+                ? 'Drag & drop PDF/CSV statements or slip photos (multiple at once), paste from clipboard, or click to browse'
+                : 'Drag & drop PDF or CSV statements (multiple at once), paste from clipboard, or click to browse'
+            }
           />
           {files.length > 0 && (
             <button type="button" onClick={handleParseFiles} disabled={parsing} className="statement-parse-btn">

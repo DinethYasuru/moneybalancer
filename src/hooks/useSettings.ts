@@ -7,6 +7,7 @@ const DEFAULTS: Omit<UserSettings, 'user_id'> = {
   currency: 'LKR',
   accent_color: '#8b7ef5',
   dashboard_widgets: { income: true, debt: true, safeToSpend: true },
+  ai_config: { enabled: false, provider: 'openai_compatible', base_url: 'https://api.openai.com/v1', api_key: '', model: 'gpt-4o-mini' },
 }
 
 export function useSettings() {
@@ -17,7 +18,10 @@ export function useSettings() {
   const refresh = useCallback(async () => {
     if (!user) return
     const { data } = await supabase.from('user_settings').select('*').eq('user_id', user.id).maybeSingle()
-    setSettings(data ?? { user_id: user.id, ...DEFAULTS })
+    // Merge over defaults rather than trusting the row shape outright — a
+    // pending migration can mean a column (e.g. ai_config) doesn't exist
+    // yet, and an old saved row simply won't have newer fields.
+    setSettings({ ...DEFAULTS, ...data, user_id: user.id })
     setLoading(false)
   }, [user])
 

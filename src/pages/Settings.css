@@ -88,3 +88,58 @@
   font-size: 0.85rem;
   animation: fadeIn 0.2s ease;
 }
+
+.settings-ai-error {
+  color: var(--color-danger);
+  font-size: 0.85rem;
+}
+
+.ai-settings-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.ai-settings-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.ai-settings-fields input,
+.ai-settings-fields select {
+  padding: 0.55rem 0.65rem;
+  font-size: 0.95rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-input-bg);
+  color: var(--color-text);
+}
+
+.ai-settings-actions {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.ai-settings-actions button {
+  padding: 0.5rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-input-bg);
+  color: var(--color-text);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.ai-settings-actions button:first-child {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+}
+
+.ai-settings-actions button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

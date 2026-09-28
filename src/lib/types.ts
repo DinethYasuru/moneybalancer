@@ -80,9 +80,20 @@ export interface Debt {
   created_at: string
 }
 
+export type AiProvider = 'openai_compatible' | 'anthropic'
+
+export interface AiConfig {
+  enabled: boolean
+  provider: AiProvider
+  base_url: string
+  api_key: string
+  model: string
+}
+
 export interface UserSettings {
   user_id: string
   currency: string
   accent_color: string
   dashboard_widgets: { income: boolean; debt: boolean; safeToSpend: boolean }
+  ai_config: AiConfig
 }

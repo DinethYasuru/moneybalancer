@@ -1,18 +1,40 @@
 import { useState } from 'react'
 import { useSettings } from '../hooks/useSettings'
+import { testAiConnection } from '../lib/ai'
+import type { AiProvider } from '../lib/types'
 import './Settings.css'
 
 const CURRENCIES = ['LKR', 'USD', 'INR', 'GBP', 'EUR', 'AUD']
 const ACCENTS = ['#8b7ef5', '#2dd4bf', '#f36a82', '#f3b95f', '#35d399', '#5b9cf5', '#e879c9']
 
+const PROVIDER_DEFAULTS: Record<AiProvider, { base_url: string; model: string }> = {
+  openai_compatible: { base_url: 'https://api.openai.com/v1', model: 'gpt-4o-mini' },
+  anthropic: { base_url: 'https://api.anthropic.com/v1', model: 'claude-haiku-4-5-20251001' },
+}
+
 export function Settings() {
   const { settings, updateSettings } = useSettings()
   const [saved, setSaved] = useState(false)
+  const [aiDraft, setAiDraft] = useState(settings.ai_config)
+  const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null)
+  const [testing, setTesting] = useState(false)
 
   async function handleChange(patch: Partial<typeof settings>) {
     await updateSettings(patch)
     setSaved(true)
     setTimeout(() => setSaved(false), 1500)
+  }
+
+  async function handleAiSave() {
+    await handleChange({ ai_config: aiDraft })
+  }
+
+  async function handleTest() {
+    setTesting(true)
+    setTestResult(null)
+    const result = await testAiConnection(aiDraft)
+    setTesting(false)
+    setTestResult(result.ok ? { ok: true, message: 'Connected successfully.' } : { ok: false, message: result.error ?? 'Failed to connect.' })
   }
 
   return (
@@ -54,7 +76,7 @@ export function Settings() {
 
       <div className="card settings-section">
         <h3>Dashboard widgets</h3>
-        <p className="settings-section-hint">Choose what shows up on your Expenses page overview.</p>
+        <p className="settings-section-hint">Choose what shows up on your dashboard overview.</p>
         <div className="settings-toggles">
           <label className="settings-toggle">
             <input
@@ -81,6 +103,66 @@ export function Settings() {
             Safe-to-spend-today
           </label>
         </div>
+      </div>
+
+      <div className="card settings-section">
+        <h3>AI integration</h3>
+        <p className="settings-section-hint">
+          Bring your own AI model to auto-read photographed bank slips and passbook pages — this app has no server of
+          its own, so your API key is used only from your browser, straight to the provider you choose. It's stored
+          in your account, visible only to you.
+        </p>
+
+        <label className="settings-toggle" style={{ marginBottom: '0.8rem' }}>
+          <input type="checkbox" checked={aiDraft.enabled} onChange={(e) => setAiDraft({ ...aiDraft, enabled: e.target.checked })} />
+          Enable AI-assisted slip reading
+        </label>
+
+        {aiDraft.enabled && (
+          <div className="ai-settings-fields">
+            <label>
+              Provider
+              <select
+                value={aiDraft.provider}
+                onChange={(e) => {
+                  const provider = e.target.value as AiProvider
+                  setAiDraft({ ...aiDraft, provider, ...PROVIDER_DEFAULTS[provider] })
+                }}
+              >
+                <option value="openai_compatible">OpenAI-compatible (OpenAI, Groq, OpenRouter, local Ollama, …)</option>
+                <option value="anthropic">Anthropic (Claude)</option>
+              </select>
+            </label>
+            <label>
+              Base URL
+              <input value={aiDraft.base_url} onChange={(e) => setAiDraft({ ...aiDraft, base_url: e.target.value })} />
+            </label>
+            <label>
+              Model
+              <input value={aiDraft.model} onChange={(e) => setAiDraft({ ...aiDraft, model: e.target.value })} placeholder="e.g. gpt-4o-mini" />
+            </label>
+            <label>
+              API key
+              <input
+                type="password"
+                value={aiDraft.api_key}
+                onChange={(e) => setAiDraft({ ...aiDraft, api_key: e.target.value })}
+                placeholder="sk-…"
+                autoComplete="off"
+              />
+            </label>
+
+            <div className="ai-settings-actions">
+              <button type="button" onClick={handleAiSave}>
+                Save AI settings
+              </button>
+              <button type="button" onClick={handleTest} disabled={testing || !aiDraft.api_key}>
+                {testing ? 'Testing…' : 'Test connection'}
+              </button>
+            </div>
+            {testResult && <p className={testResult.ok ? 'settings-saved' : 'settings-ai-error'}>{testResult.message}</p>}
+          </div>
+        )}
       </div>
 
       {saved && <p className="settings-saved">Saved</p>}

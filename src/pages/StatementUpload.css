@@ -18,6 +18,20 @@
   margin: 0 0 1rem;
 }
 
+.statement-ai-nudge {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  background: var(--color-surface-alt);
+  padding: 0.6rem 0.9rem;
+  border-radius: 8px;
+  margin: 0 0 1rem;
+}
+
+.statement-ai-nudge a {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
 .statement-file-mode {
   display: flex;
   flex-direction: column;

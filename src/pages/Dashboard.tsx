@@ -7,6 +7,7 @@ import { useCategories } from '../hooks/useCategories'
 import { useIncome } from '../hooks/useIncome'
 import { useDebts } from '../hooks/useDebts'
 import { useRecurringBills } from '../hooks/useRecurringBills'
+import { useSavingsGoals } from '../hooks/useSavingsGoals'
 import { useSettings } from '../hooks/useSettings'
 import { analyzeExpenses } from '../lib/analysis'
 import {
@@ -31,6 +32,7 @@ export function Dashboard() {
   const { income } = useIncome()
   const { debts } = useDebts()
   const { bills } = useRecurringBills()
+  const { goals } = useSavingsGoals()
   const { settings } = useSettings()
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
@@ -76,6 +78,31 @@ export function Dashboard() {
       <div className="dashboard-top stagger">
         <HealthScoreGauge health={health} />
         <UpcomingPayments items={upcoming} currency={currency} />
+        <div className="card dashboard-savings">
+          <h3 className="dashboard-savings-title">Long-term savings</h3>
+          {goals.length === 0 ? (
+            <p className="dashboard-savings-empty">
+              No savings goals yet — <Link to="/goals">set one up</Link> (emergency fund, a big purchase, anything).
+            </p>
+          ) : (
+            <ul className="dashboard-savings-list">
+              {goals.slice(0, 3).map((g) => {
+                const pct = Math.min((g.current_amount / g.target_amount) * 100, 100)
+                return (
+                  <li key={g.id}>
+                    <div className="dashboard-savings-row">
+                      <span>{g.name}</span>
+                      <span>{pct.toFixed(0)}%</span>
+                    </div>
+                    <div className="dashboard-savings-bar">
+                      <div className={`dashboard-savings-fill ${pct >= 100 ? 'goal-complete' : ''}`} style={{ width: `${pct}%` }} />
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
       </div>
 
       <div className="dashboard-stats stagger">
