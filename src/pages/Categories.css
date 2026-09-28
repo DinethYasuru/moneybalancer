@@ -50,7 +50,7 @@
   font-size: 1rem;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--color-input-bg);
   color: var(--color-text);
 }
 
@@ -124,9 +124,50 @@
   font-size: 0.9rem;
 }
 
+.category-essential-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.category-essential-badge.is-essential {
+  background: rgba(23, 166, 115, 0.12);
+  color: var(--color-success);
+}
+
+.category-essential-badge.is-discretionary {
+  background: rgba(240, 169, 58, 0.15);
+  color: var(--color-warning);
+}
+
+.category-budget-label {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.category-essential-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.category-edit-budget {
+  width: 100px;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
 .category-row-actions {
   display: flex;
   gap: 0.5rem;
+  margin-left: auto;
 }
 
 .category-row-actions button {
@@ -134,7 +175,7 @@
   font-size: 0.82rem;
   border: 1px solid var(--color-border);
   border-radius: 6px;
-  background: #fff;
+  background: var(--color-input-bg);
   cursor: pointer;
 }
 

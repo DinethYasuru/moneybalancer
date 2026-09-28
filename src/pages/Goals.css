@@ -1,0 +1,145 @@
+.goals-page {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.goals-page h2 {
+  font-size: 1.2rem;
+}
+
+.goals-hint {
+  color: var(--color-text-muted);
+  font-size: 0.88rem;
+  margin: 0.3rem 0 1.25rem;
+}
+
+.goals-empty {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.goals-error {
+  color: var(--color-danger);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.goal-form {
+  padding: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  margin-bottom: 1.25rem;
+}
+
+.goal-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.goal-form input {
+  padding: 0.55rem 0.65rem;
+  font-size: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-input-bg);
+  color: var(--color-text);
+}
+
+.goal-form button[type='submit'] {
+  align-self: flex-start;
+  padding: 0.6rem 1.1rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--color-primary);
+  color: white;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.goal-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.goal-row {
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.goal-row-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.goal-name {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.goal-delete {
+  color: var(--color-danger);
+  border: 1px solid rgba(224, 67, 92, 0.3);
+  border-radius: 6px;
+  background: var(--color-input-bg);
+  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.goal-progress-bar {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--color-surface-alt);
+  overflow: hidden;
+}
+
+.goal-progress-fill {
+  height: 100%;
+  background: var(--color-primary);
+}
+
+.goal-progress-fill.goal-complete {
+  background: var(--color-success);
+}
+
+.goal-progress-meta {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.goal-contribute {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.goal-contribute input {
+  flex: 1;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+.goal-contribute button {
+  padding: 0.5rem 0.9rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--color-primary);
+  color: white;
+  font-size: 0.85rem;
+  cursor: pointer;
+}

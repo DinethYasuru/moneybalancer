@@ -7,6 +7,9 @@ export interface CategoryBreakdown {
   previousTotal: number
   changeAmount: number
   changePct: number | null // null when previous was 0 (can't compute a meaningful %)
+  monthlyBudget: number | null
+  budgetUsedPct: number | null
+  isEssential: boolean
 }
 
 export interface MonthlyAnalysis {
@@ -17,6 +20,8 @@ export interface MonthlyAnalysis {
   totalChangePct: number | null
   breakdown: CategoryBreakdown[]
   suggestions: string[]
+  essentialTotal: number
+  discretionaryTotal: number
 }
 
 function monthKey(dateStr: string): string {
@@ -53,7 +58,7 @@ export function analyzeExpenses(expenses: Expense[], categories: Category[], ref
     }
   }
 
-  const categoryName = (id: string) => categories.find((c) => c.id === id)?.name ?? 'Uncategorized'
+  const categoryOf = (id: string) => categories.find((c) => c.id === id)
 
   const allCategoryIds = new Set([...currentByCategory.keys(), ...previousByCategory.keys()])
   const breakdown: CategoryBreakdown[] = Array.from(allCategoryIds).map((id) => {
@@ -61,17 +66,28 @@ export function analyzeExpenses(expenses: Expense[], categories: Category[], ref
     const previous = previousByCategory.get(id) ?? 0
     const changeAmount = current - previous
     const changePct = previous > 0 ? changeAmount / previous : null
+    const category = id === 'uncategorized' ? null : categoryOf(id)
     return {
       categoryId: id === 'uncategorized' ? null : id,
-      categoryName: id === 'uncategorized' ? 'Uncategorized' : categoryName(id),
+      categoryName: category?.name ?? 'Uncategorized',
       currentTotal: current,
       previousTotal: previous,
       changeAmount,
       changePct,
+      monthlyBudget: category?.monthly_budget ?? null,
+      budgetUsedPct: category?.monthly_budget ? current / category.monthly_budget : null,
+      isEssential: category?.is_essential ?? true,
     }
   })
 
   breakdown.sort((a, b) => b.currentTotal - a.currentTotal)
+
+  let essentialTotal = 0
+  let discretionaryTotal = 0
+  for (const b of breakdown) {
+    if (b.isEssential) essentialTotal += b.currentTotal
+    else discretionaryTotal += b.currentTotal
+  }
 
   const suggestions: string[] = []
   for (const b of breakdown) {
@@ -80,6 +96,16 @@ export function analyzeExpenses(expenses: Expense[], categories: Category[], ref
       suggestions.push(
         `${b.categoryName} is up ${(b.changePct * 100).toFixed(0)}% vs last month (${b.previousTotal.toFixed(2)} → ${b.currentTotal.toFixed(2)}). Worth checking what changed.`,
       )
+    }
+  }
+
+  for (const b of breakdown) {
+    if (b.budgetUsedPct !== null && b.budgetUsedPct >= 1) {
+      suggestions.push(
+        `${b.categoryName} is over budget: ${b.currentTotal.toFixed(2)} spent against a ${b.monthlyBudget!.toFixed(2)} limit.`,
+      )
+    } else if (b.budgetUsedPct !== null && b.budgetUsedPct >= 0.85) {
+      suggestions.push(`${b.categoryName} is at ${(b.budgetUsedPct * 100).toFixed(0)}% of its budget — close to the limit.`)
     }
   }
 
@@ -109,5 +135,133 @@ export function analyzeExpenses(expenses: Expense[], categories: Category[], ref
     totalChangePct: previousTotal > 0 ? (currentTotal - previousTotal) / previousTotal : null,
     breakdown,
     suggestions,
+    essentialTotal,
+    discretionaryTotal,
   }
+}
+
+export interface FrequentSmallSpend {
+  categoryName: string
+  count: number
+  total: number
+  average: number
+}
+
+const SMALL_SPEND_THRESHOLD = 1500
+const SMALL_SPEND_MIN_COUNT = 4
+
+/**
+ * Small, frequent purchases in discretionary categories are the classic
+ * "death by a thousand cuts" pattern — individually easy to ignore, but
+ * they add up. Essential categories (groceries, bills) are excluded since
+ * frequent small spending there is normal, not waste.
+ */
+export function findFrequentSmallSpends(expenses: Expense[], categories: Category[], referenceDate = new Date()): FrequentSmallSpend[] {
+  const currentKey = referenceDate.toISOString().slice(0, 7)
+  const discretionaryIds = new Set(categories.filter((c) => !c.is_essential).map((c) => c.id))
+
+  const groups = new Map<string, Expense[]>()
+  for (const e of expenses) {
+    if (monthKey(e.expense_date) !== currentKey) continue
+    if (!e.category_id || !discretionaryIds.has(e.category_id)) continue
+    if (e.amount > SMALL_SPEND_THRESHOLD) continue
+    const list = groups.get(e.category_id) ?? []
+    list.push(e)
+    groups.set(e.category_id, list)
+  }
+
+  const results: FrequentSmallSpend[] = []
+  for (const [categoryId, list] of groups) {
+    if (list.length < SMALL_SPEND_MIN_COUNT) continue
+    const total = list.reduce((sum, e) => sum + e.amount, 0)
+    results.push({
+      categoryName: categories.find((c) => c.id === categoryId)?.name ?? 'Uncategorized',
+      count: list.length,
+      total,
+      average: total / list.length,
+    })
+  }
+
+  return results.sort((a, b) => b.total - a.total)
+}
+
+export interface SubscriptionSummary {
+  description: string
+  monthlyAmount: number
+  lastChargedDate: string
+  occurrences: number
+}
+
+/**
+ * Lists distinct recurring charges in the Subscriptions category so the
+ * user can spot ones they forgot they were paying for.
+ */
+export function listSubscriptions(expenses: Expense[], categories: Category[]): SubscriptionSummary[] {
+  const subsCategory = categories.find((c) => c.name.toLowerCase() === 'subscriptions')
+  if (!subsCategory) return []
+
+  const groups = new Map<string, Expense[]>()
+  for (const e of expenses) {
+    if (e.category_id !== subsCategory.id) continue
+    const key = (e.description ?? 'Subscription').trim().toLowerCase()
+    const list = groups.get(key) ?? []
+    list.push(e)
+    groups.set(key, list)
+  }
+
+  const results: SubscriptionSummary[] = []
+  for (const list of groups.values()) {
+    const sorted = [...list].sort((a, b) => (a.expense_date < b.expense_date ? 1 : -1))
+    results.push({
+      description: sorted[0].description ?? 'Subscription',
+      monthlyAmount: sorted[0].amount,
+      lastChargedDate: sorted[0].expense_date,
+      occurrences: sorted.length,
+    })
+  }
+
+  return results.sort((a, b) => b.monthlyAmount - a.monthlyAmount)
+}
+
+export interface PossibleDuplicate {
+  description: string
+  amount: number
+  dates: string[]
+}
+
+const DUPLICATE_WINDOW_DAYS = 3
+
+function daysBetween(a: string, b: string): number {
+  return Math.abs(new Date(a).getTime() - new Date(b).getTime()) / (1000 * 60 * 60 * 24)
+}
+
+/**
+ * Flags same-amount, same-description charges within a few days of each
+ * other — a common sign of an accidental double charge or duplicate import.
+ */
+export function findPossibleDuplicates(expenses: Expense[]): PossibleDuplicate[] {
+  const groups = new Map<string, Expense[]>()
+  for (const e of expenses) {
+    const key = `${e.amount}|${(e.description ?? '').trim().toLowerCase()}`
+    const list = groups.get(key) ?? []
+    list.push(e)
+    groups.set(key, list)
+  }
+
+  const duplicates: PossibleDuplicate[] = []
+  for (const list of groups.values()) {
+    if (list.length < 2) continue
+    const sorted = [...list].sort((a, b) => (a.expense_date < b.expense_date ? -1 : 1))
+    for (let i = 1; i < sorted.length; i++) {
+      if (daysBetween(sorted[i - 1].expense_date, sorted[i].expense_date) <= DUPLICATE_WINDOW_DAYS) {
+        duplicates.push({
+          description: sorted[i].description ?? '(no description)',
+          amount: sorted[i].amount,
+          dates: [sorted[i - 1].expense_date, sorted[i].expense_date],
+        })
+      }
+    }
+  }
+
+  return duplicates
 }

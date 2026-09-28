@@ -10,6 +10,8 @@ export function Categories() {
   const [name, setName] = useState('')
   const [icon, setIcon] = useState('🏷️')
   const [color, setColor] = useState(SWATCHES[0])
+  const [budget, setBudget] = useState('')
+  const [essential, setEssential] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -18,7 +20,13 @@ export function Categories() {
     e.preventDefault()
     setError(null)
     setSubmitting(true)
-    const { error } = await addCategory({ name: name.trim(), icon, color })
+    const { error } = await addCategory({
+      name: name.trim(),
+      icon,
+      color,
+      monthly_budget: budget ? Number(budget) : null,
+      is_essential: essential,
+    })
     setSubmitting(false)
     if (error) {
       setError(error)
@@ -27,6 +35,8 @@ export function Categories() {
     setName('')
     setIcon('🏷️')
     setColor(SWATCHES[0])
+    setBudget('')
+    setEssential(true)
   }
 
   async function handleDelete(cat: Category) {
@@ -37,7 +47,10 @@ export function Categories() {
   return (
     <div className="categories-page">
       <h2>Categories</h2>
-      <p className="categories-hint">Add your own categories, or tweak the color and icon of existing ones.</p>
+      <p className="categories-hint">
+        Add your own categories, set a monthly budget to track against, and mark whether it's essential (bills,
+        groceries) or discretionary (dining out, subscriptions) — this feeds the waste-detection on the Analysis page.
+      </p>
 
       <form className="category-form card" onSubmit={handleAdd}>
         <div className="category-form-row">
@@ -48,6 +61,17 @@ export function Categories() {
           <label className="category-form-name">
             Name
             <input value={name} onChange={(e) => setName(e.target.value)} required placeholder="e.g. Pet Care" />
+          </label>
+        </div>
+
+        <div className="category-form-row">
+          <label className="category-form-name">
+            Monthly budget (optional)
+            <input type="number" step="0.01" min="0" value={budget} onChange={(e) => setBudget(e.target.value)} placeholder="e.g. 10000" />
+          </label>
+          <label className="category-essential-toggle">
+            <input type="checkbox" checked={essential} onChange={(e) => setEssential(e.target.checked)} />
+            Essential
           </label>
         </div>
 
@@ -88,6 +112,10 @@ export function Categories() {
                 <span className="category-chip" style={{ background: `${cat.color}22`, color: cat.color ?? undefined }}>
                   <span>{cat.icon}</span> {cat.name}
                 </span>
+                <span className={`category-essential-badge ${cat.is_essential ? 'is-essential' : 'is-discretionary'}`}>
+                  {cat.is_essential ? 'Essential' : 'Discretionary'}
+                </span>
+                {cat.monthly_budget != null && <span className="category-budget-label">Budget: {cat.monthly_budget.toFixed(2)}</span>}
                 <div className="category-row-actions">
                   <button type="button" onClick={() => setEditingId(cat.id)}>
                     Edit
@@ -111,17 +139,32 @@ function EditRow({
   onCancel,
 }: {
   category: Category
-  onSave: (patch: { name: string; icon: string; color: string }) => void
+  onSave: (patch: { name: string; icon: string; color: string; monthly_budget: number | null; is_essential: boolean }) => void
   onCancel: () => void
 }) {
   const [name, setName] = useState(category.name)
   const [icon, setIcon] = useState(category.icon ?? '')
   const [color, setColor] = useState(category.color ?? SWATCHES[0])
+  const [budget, setBudget] = useState(category.monthly_budget?.toString() ?? '')
+  const [essential, setEssential] = useState(category.is_essential)
 
   return (
     <div className="category-edit-row">
       <input value={icon} onChange={(e) => setIcon(e.target.value)} maxLength={4} className="category-icon-input" />
       <input value={name} onChange={(e) => setName(e.target.value)} className="category-edit-name" />
+      <input
+        type="number"
+        step="0.01"
+        min="0"
+        value={budget}
+        onChange={(e) => setBudget(e.target.value)}
+        placeholder="Budget"
+        className="category-edit-budget"
+      />
+      <label className="category-essential-toggle">
+        <input type="checkbox" checked={essential} onChange={(e) => setEssential(e.target.checked)} />
+        Essential
+      </label>
       <div className="category-swatches">
         {SWATCHES.map((s) => (
           <button
@@ -135,7 +178,7 @@ function EditRow({
         ))}
       </div>
       <div className="category-row-actions">
-        <button type="button" onClick={() => onSave({ name, icon, color })}>
+        <button type="button" onClick={() => onSave({ name, icon, color, monthly_budget: budget ? Number(budget) : null, is_essential: essential })}>
           Save
         </button>
         <button type="button" onClick={onCancel}>

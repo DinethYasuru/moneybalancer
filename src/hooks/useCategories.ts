@@ -19,19 +19,30 @@ export function useCategories() {
     refresh()
   }, [refresh])
 
-  async function addCategory(input: { name: string; icon: string; color: string }) {
+  async function addCategory(input: {
+    name: string
+    icon: string
+    color: string
+    monthly_budget?: number | null
+    is_essential?: boolean
+  }) {
     if (!user) return { error: 'Not signed in' }
     const { error } = await supabase.from('categories').insert({
       user_id: user.id,
       name: input.name,
       icon: input.icon || null,
       color: input.color,
+      monthly_budget: input.monthly_budget ?? null,
+      is_essential: input.is_essential ?? true,
     })
     if (!error) await refresh()
     return { error: error?.message ?? null }
   }
 
-  async function updateCategory(id: string, patch: { name?: string; icon?: string; color?: string }) {
+  async function updateCategory(
+    id: string,
+    patch: { name?: string; icon?: string; color?: string; monthly_budget?: number | null; is_essential?: boolean },
+  ) {
     const { error } = await supabase.from('categories').update(patch).eq('id', id)
     if (!error) await refresh()
     return { error: error?.message ?? null }

@@ -4,6 +4,8 @@ export interface Category {
   icon: string | null
   color: string | null
   is_default: boolean
+  monthly_budget: number | null
+  is_essential: boolean
 }
 
 export interface Expense {
@@ -35,4 +37,13 @@ export interface Attachment {
   file_type: string
   file_size_bytes: number | null
   uploaded_at: string
+}
+
+export interface SavingsGoal {
+  id: string
+  name: string
+  target_amount: number
+  target_date: string | null
+  current_amount: number
+  created_at: string
 }

@@ -18,6 +18,7 @@ export function Layout({ children }: { children: ReactNode }) {
             <NavLink to="/bills">Monthly Bills</NavLink>
             <NavLink to="/statements">Statements</NavLink>
             <NavLink to="/analysis">Analysis</NavLink>
+            <NavLink to="/goals">Goals</NavLink>
             <NavLink to="/categories">Categories</NavLink>
           </nav>
           <div className="layout-user">

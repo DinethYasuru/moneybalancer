@@ -62,7 +62,7 @@
   font-size: 1rem;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--color-input-bg);
   color: var(--color-text);
 }
 
@@ -145,7 +145,7 @@
   font-size: 0.82rem;
   border: 1px solid var(--color-border);
   border-radius: 6px;
-  background: #fff;
+  background: var(--color-input-bg);
   cursor: pointer;
 }
 
@@ -203,6 +203,6 @@
   padding: 0.5rem 0.9rem;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--color-input-bg);
   cursor: pointer;
 }

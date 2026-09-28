@@ -4,7 +4,7 @@
   padding: 1.5rem 1rem;
   text-align: center;
   cursor: pointer;
-  color: #666;
+  color: var(--color-text-muted);
   font-size: 0.9rem;
   transition: border-color 0.15s, background 0.15s;
 }
@@ -34,7 +34,7 @@
   justify-content: space-between;
   align-items: center;
   font-size: 0.85rem;
-  background: #f5f6f8;
+  background: var(--color-surface-alt);
   border-radius: 6px;
   padding: 0.4rem 0.6rem;
 }
@@ -45,7 +45,7 @@
   cursor: pointer;
   font-size: 1.1rem;
   line-height: 1;
-  color: #999;
+  color: var(--color-text-muted);
 }
 
 .dropzone-file-list button:hover {
