@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { parseStatementPdf, parseStatementCsv, parseStatementText, type ParsedTransaction } from '../lib/statementParser'
+import { guessCategoryName } from '../lib/categorize'
 import type { Category } from '../lib/types'
 import { useCategories } from '../hooks/useCategories'
 import './StatementUpload.css'
@@ -23,9 +24,20 @@ export function StatementUpload() {
   const [mode, setMode] = useState<'file' | 'paste'>('file')
   const [pasteText, setPasteText] = useState('')
 
+  function guessCategoryId(description: string): string {
+    const guessedName = guessCategoryName(description)
+    const match = guessedName ? categories.find((c) => c.name.toLowerCase() === guessedName.toLowerCase()) : null
+    return match?.id ?? categories.find((c) => c.name === 'Other')?.id ?? categories[0]?.id ?? ''
+  }
+
   function applyParsed(parsed: ParsedTransaction[], emptyMessage: string) {
-    const defaultCategoryId = categories[0]?.id ?? ''
-    setRows(parsed.map((p) => ({ ...p, categoryId: defaultCategoryId, include: true })))
+    setRows(
+      parsed.map((p) => ({
+        ...p,
+        categoryId: p.direction === 'debit' ? guessCategoryId(p.description) : '',
+        include: true,
+      })),
+    )
     if (parsed.length === 0) setError(emptyMessage)
   }
 
@@ -230,9 +242,18 @@ export function StatementUpload() {
                       />
                     </td>
                     <td>
-                      <select value={row.direction} onChange={(e) => updateRow(i, { direction: e.target.value as 'debit' | 'credit' })}>
-                        <option value="debit">Debit</option>
-                        <option value="credit">Credit</option>
+                      <select
+                        value={row.direction}
+                        onChange={(e) => {
+                          const direction = e.target.value as 'debit' | 'credit'
+                          updateRow(i, {
+                            direction,
+                            categoryId: direction === 'debit' && !row.categoryId ? guessCategoryId(row.description) : row.categoryId,
+                          })
+                        }}
+                      >
+                        <option value="debit">Expense (debit)</option>
+                        <option value="credit">Income (credit)</option>
                       </select>
                     </td>
                     <td>
