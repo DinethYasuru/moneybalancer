@@ -265,3 +265,127 @@ export function findPossibleDuplicates(expenses: Expense[]): PossibleDuplicate[]
 
   return duplicates
 }
+
+export type InsightType = 'danger' | 'warning' | 'tip' | 'success'
+
+export interface Insight {
+  id: string
+  type: InsightType
+  icon: string
+  headline: string
+  detail: string
+}
+
+/**
+ * Pulls every analysis signal (budget status, category growth, waste
+ * patterns, subscriptions, duplicates) into one ranked list of typed
+ * cards, worst-first, for a single visual "what needs my attention" feed.
+ */
+export function generateInsights(expenses: Expense[], categories: Category[], referenceDate = new Date()): Insight[] {
+  const analysis = analyzeExpenses(expenses, categories, referenceDate)
+  const insights: Insight[] = []
+
+  for (const b of analysis.breakdown) {
+    if (b.budgetUsedPct !== null && b.budgetUsedPct >= 1) {
+      insights.push({
+        id: `budget-over-${b.categoryId}`,
+        type: 'danger',
+        icon: '🚨',
+        headline: `${b.categoryName} over budget`,
+        detail: `${b.currentTotal.toFixed(2)} spent against a ${b.monthlyBudget!.toFixed(2)} limit this month.`,
+      })
+    } else if (b.budgetUsedPct !== null && b.budgetUsedPct >= 0.85) {
+      insights.push({
+        id: `budget-near-${b.categoryId}`,
+        type: 'warning',
+        icon: '⏳',
+        headline: `${b.categoryName} nearing budget`,
+        detail: `Already at ${(b.budgetUsedPct * 100).toFixed(0)}% of its ${b.monthlyBudget!.toFixed(2)} limit.`,
+      })
+    }
+  }
+
+  for (const b of analysis.breakdown) {
+    if (b.currentTotal < MIN_AMOUNT_FOR_FLAG) continue
+    if (b.changePct !== null && b.changePct >= GROWTH_FLAG_THRESHOLD) {
+      insights.push({
+        id: `growth-${b.categoryId}`,
+        type: 'warning',
+        icon: '📈',
+        headline: `${b.categoryName} up ${(b.changePct * 100).toFixed(0)}%`,
+        detail: `${b.previousTotal.toFixed(2)} → ${b.currentTotal.toFixed(2)} vs last month. Worth a look.`,
+      })
+    }
+  }
+
+  const dupes = findPossibleDuplicates(expenses)
+  for (const d of dupes) {
+    insights.push({
+      id: `dup-${d.description}-${d.dates[1]}`,
+      type: 'danger',
+      icon: '🔍',
+      headline: 'Possible duplicate charge',
+      detail: `${d.description} for ${d.amount.toFixed(2)} appears on both ${d.dates[0]} and ${d.dates[1]}.`,
+    })
+  }
+
+  const small = findFrequentSmallSpends(expenses, categories, referenceDate)
+  for (const f of small) {
+    insights.push({
+      id: `small-${f.categoryName}`,
+      type: 'tip',
+      icon: '💸',
+      headline: `${f.categoryName}: death by a thousand cuts`,
+      detail: `${f.count} small purchases added up to ${f.total.toFixed(2)} this month (avg ${f.average.toFixed(2)}).`,
+    })
+  }
+
+  const subs = listSubscriptions(expenses, categories)
+  for (const s of subs) {
+    insights.push({
+      id: `sub-${s.description}`,
+      type: 'tip',
+      icon: '🔁',
+      headline: s.description,
+      detail: `${s.monthlyAmount.toFixed(2)} · last charged ${s.lastChargedDate}. Still using it?`,
+    })
+  }
+
+  for (const b of analysis.breakdown) {
+    if (b.previousTotal >= MIN_AMOUNT_FOR_FLAG && b.currentTotal === 0) {
+      insights.push({
+        id: `drop-${b.categoryId}`,
+        type: 'success',
+        icon: '✅',
+        headline: `${b.categoryName} spending stopped`,
+        detail: `Down from ${b.previousTotal.toFixed(2)} last month to zero — nice.`,
+      })
+    }
+  }
+
+  if (analysis.currentTotal > 0 && analysis.previousTotal > 0) {
+    const overallChange = (analysis.currentTotal - analysis.previousTotal) / analysis.previousTotal
+    if (overallChange <= -0.15) {
+      insights.push({
+        id: 'overall-down',
+        type: 'success',
+        icon: '🎉',
+        headline: 'Total spending is down',
+        detail: `Down ${Math.abs(overallChange * 100).toFixed(0)}% overall vs last month — good progress.`,
+      })
+    }
+  }
+
+  if (insights.length === 0) {
+    insights.push({
+      id: 'all-clear',
+      type: 'success',
+      icon: '👍',
+      headline: 'Nothing unusual',
+      detail: 'No budget overruns, spikes, or odd charges detected this month.',
+    })
+  }
+
+  const severity: Record<InsightType, number> = { danger: 0, warning: 1, tip: 2, success: 3 }
+  return insights.sort((a, b) => severity[a.type] - severity[b.type])
+}

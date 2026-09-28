@@ -1,0 +1,109 @@
+.insight-cards-row {
+  display: flex;
+  gap: 0.9rem;
+  overflow-x: auto;
+  padding: 0.2rem 0.2rem 0.8rem;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+}
+
+.insight-cards-row::-webkit-scrollbar {
+  height: 6px;
+}
+
+.insight-cards-row::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 999px;
+}
+
+.insight-cards-empty {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.insight-card {
+  position: relative;
+  flex: 0 0 250px;
+  scroll-snap-align: start;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 1.1rem 1.1rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  box-shadow: var(--shadow-card);
+  border-top: 3px solid var(--accent);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.insight-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.35), 0 12px 28px rgba(0, 0, 0, 0.3);
+}
+
+.insight-danger {
+  --accent: var(--color-danger);
+}
+
+.insight-warning {
+  --accent: var(--color-warning);
+}
+
+.insight-tip {
+  --accent: var(--color-accent);
+}
+
+.insight-success {
+  --accent: var(--color-success);
+}
+
+.insight-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.insight-type-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+
+.insight-headline {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.insight-detail {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.insight-dismiss {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.6rem;
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.15rem;
+}
+
+.insight-dismiss:hover {
+  color: var(--color-text);
+}

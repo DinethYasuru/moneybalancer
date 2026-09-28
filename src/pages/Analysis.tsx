@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { useCategories } from '../hooks/useCategories'
-import { analyzeExpenses, findFrequentSmallSpends, listSubscriptions, findPossibleDuplicates } from '../lib/analysis'
+import { analyzeExpenses, generateInsights } from '../lib/analysis'
+import { InsightCards } from '../components/InsightCards'
 import type { Expense } from '../lib/types'
 import './Analysis.css'
 
@@ -26,15 +27,13 @@ export function Analysis() {
   if (loading) return <p>Loading…</p>
 
   const analysis = analyzeExpenses(expenses, categories)
-  const frequentSmallSpends = findFrequentSmallSpends(expenses, categories)
-  const subscriptions = listSubscriptions(expenses, categories)
-  const duplicates = findPossibleDuplicates(expenses)
+  const insights = generateInsights(expenses, categories)
   const essentialPct = analysis.currentTotal > 0 ? (analysis.essentialTotal / analysis.currentTotal) * 100 : 0
   const discretionaryPct = 100 - essentialPct
   const budgeted = analysis.breakdown.filter((b) => b.monthlyBudget != null)
 
   return (
-    <div className="analysis">
+    <div className="analysis page-enter">
       <h2>Financial analysis</h2>
 
       <div className="analysis-summary">
@@ -54,6 +53,9 @@ export function Analysis() {
         </div>
       </div>
 
+      <h3>Insights</h3>
+      <InsightCards insights={insights} />
+
       <h3>Essential vs discretionary</h3>
       <div className="essential-split card">
         <div className="essential-split-bar">
@@ -64,13 +66,6 @@ export function Analysis() {
           <span><span className="dot dot-discretionary" /> Discretionary {analysis.discretionaryTotal.toFixed(2)} ({discretionaryPct.toFixed(0)}%)</span>
         </div>
       </div>
-
-      <h3>Suggestions</h3>
-      <ul className="analysis-suggestions">
-        {analysis.suggestions.map((s, i) => (
-          <li key={i}>{s}</li>
-        ))}
-      </ul>
 
       {budgeted.length > 0 && (
         <>
@@ -88,45 +83,6 @@ export function Analysis() {
                     style={{ width: `${Math.min(b.budgetUsedPct! * 100, 100)}%` }}
                   />
                 </div>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-
-      {frequentSmallSpends.length > 0 && (
-        <>
-          <h3>Frequent small purchases (possible waste)</h3>
-          <ul className="analysis-suggestions">
-            {frequentSmallSpends.map((f) => (
-              <li key={f.categoryName}>
-                {f.categoryName}: {f.count} separate purchases totaling {f.total.toFixed(2)} (avg {f.average.toFixed(2)} each) this month.
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-
-      {subscriptions.length > 0 && (
-        <>
-          <h3>Recurring subscriptions</h3>
-          <ul className="analysis-suggestions">
-            {subscriptions.map((s) => (
-              <li key={s.description}>
-                {s.description}: {s.monthlyAmount.toFixed(2)} · charged {s.occurrences} time{s.occurrences === 1 ? '' : 's'}, last on {s.lastChargedDate}. Still using this?
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-
-      {duplicates.length > 0 && (
-        <>
-          <h3>Possible duplicate charges</h3>
-          <ul className="analysis-suggestions analysis-warning-list">
-            {duplicates.map((d, i) => (
-              <li key={i}>
-                {d.description}: {d.amount.toFixed(2)} charged on both {d.dates[0]} and {d.dates[1]} — check this isn't a double charge.
               </li>
             ))}
           </ul>
