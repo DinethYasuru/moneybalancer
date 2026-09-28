@@ -118,27 +118,35 @@ export function StatementUpload() {
       return
     }
 
-    let savedExpenses = 0
-    for (const row of included) {
-      let expenseId: string | null = null
+    // Pre-generate ids client-side so both tables can be inserted in a single
+    // batched call each, instead of one round trip per row (which is what
+    // made this crawl on statements with more than a few transactions).
+    const rowsWithIds = included.map((row) => ({
+      row,
+      expenseId: row.direction === 'debit' ? crypto.randomUUID() : null,
+    }))
 
-      if (row.direction === 'debit') {
-        const { data: expense } = await supabase
-          .from('expenses')
-          .insert({
-            user_id: user.id,
-            category_id: row.categoryId || null,
-            amount: row.amount,
-            description: row.description,
-            expense_date: row.date,
-          })
-          .select()
-          .single()
-        expenseId = expense?.id ?? null
-        if (expenseId) savedExpenses++
+    const debitRows = rowsWithIds.filter((r) => r.expenseId)
+    if (debitRows.length > 0) {
+      const { error: expensesError } = await supabase.from('expenses').insert(
+        debitRows.map(({ row, expenseId }) => ({
+          id: expenseId,
+          user_id: user.id,
+          category_id: row.categoryId || null,
+          amount: row.amount,
+          description: row.description,
+          expense_date: row.date,
+        })),
+      )
+      if (expensesError) {
+        setError(`Failed to save expenses: ${expensesError.message}`)
+        setSaving(false)
+        return
       }
+    }
 
-      await supabase.from('statement_transactions').insert({
+    const { error: transactionsError } = await supabase.from('statement_transactions').insert(
+      rowsWithIds.map(({ row, expenseId }) => ({
         user_id: user.id,
         statement_id: statement.id,
         txn_date: row.date,
@@ -148,8 +156,15 @@ export function StatementUpload() {
         category_id: row.direction === 'debit' ? row.categoryId || null : null,
         confirmed: true,
         expense_id: expenseId,
-      })
+      })),
+    )
+    if (transactionsError) {
+      setError(`Expenses saved, but recording statement transactions failed: ${transactionsError.message}`)
+      setSaving(false)
+      return
     }
+
+    const savedExpenses = debitRows.length
 
     setSaving(false)
     setSavedCount(savedExpenses)
