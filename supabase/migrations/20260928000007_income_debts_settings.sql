@@ -18,6 +18,7 @@ create index if not exists income_user_date_idx on public.income (user_id, recei
 
 alter table public.income enable row level security;
 
+drop policy if exists "income_owner" on public.income;
 create policy "income_owner" on public.income
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
@@ -40,6 +41,7 @@ create index if not exists debts_user_idx on public.debts (user_id);
 
 alter table public.debts enable row level security;
 
+drop policy if exists "debts_owner" on public.debts;
 create policy "debts_owner" on public.debts
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
@@ -59,5 +61,6 @@ create table if not exists public.user_settings (
 
 alter table public.user_settings enable row level security;
 
+drop policy if exists "user_settings_owner" on public.user_settings;
 create policy "user_settings_owner" on public.user_settings
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
