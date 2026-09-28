@@ -20,8 +20,9 @@ export function Layout({ children }: { children: ReactNode }) {
           <span className="layout-brand">MoneyBalancer</span>
           <nav className="layout-nav">
             <NavLink to="/" end>
-              Expenses
+              Dashboard
             </NavLink>
+            <NavLink to="/expenses">Expenses</NavLink>
             <NavLink to="/income">Income</NavLink>
             <NavLink to="/debts">Debts</NavLink>
             <NavLink to="/bills">Monthly Bills</NavLink>

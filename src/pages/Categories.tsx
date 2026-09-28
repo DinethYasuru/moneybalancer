@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useCategories } from '../hooks/useCategories'
+import { useSettings } from '../hooks/useSettings'
+import { formatMoney } from '../lib/format'
 import type { Category } from '../lib/types'
 import './Categories.css'
 
@@ -7,6 +9,7 @@ const SWATCHES = ['#5b4fe8', '#14b8a6', '#f0a93a', '#e0435c', '#17a673', '#3b82f
 
 export function Categories() {
   const { categories, addCategory, updateCategory, deleteCategory } = useCategories()
+  const { settings } = useSettings()
   const [name, setName] = useState('')
   const [icon, setIcon] = useState('🏷️')
   const [color, setColor] = useState(SWATCHES[0])
@@ -115,7 +118,9 @@ export function Categories() {
                 <span className={`category-essential-badge ${cat.is_essential ? 'is-essential' : 'is-discretionary'}`}>
                   {cat.is_essential ? 'Essential' : 'Discretionary'}
                 </span>
-                {cat.monthly_budget != null && <span className="category-budget-label">Budget: {cat.monthly_budget.toFixed(2)}</span>}
+                {cat.monthly_budget != null && (
+                  <span className="category-budget-label">Budget: {formatMoney(cat.monthly_budget, settings.currency)}</span>
+                )}
                 <div className="category-row-actions">
                   <button type="button" onClick={() => setEditingId(cat.id)}>
                     Edit

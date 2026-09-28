@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useSavingsGoals } from '../hooks/useSavingsGoals'
+import { useSettings } from '../hooks/useSettings'
+import { formatMoney } from '../lib/format'
 import type { SavingsGoal } from '../lib/types'
 import './Goals.css'
 
@@ -12,6 +14,7 @@ function monthsUntil(dateStr: string): number {
 
 export function Goals() {
   const { goals, addGoal, addContribution, deleteGoal } = useSavingsGoals()
+  const { settings } = useSettings()
   const [name, setName] = useState('')
   const [targetAmount, setTargetAmount] = useState('')
   const [targetDate, setTargetDate] = useState('')
@@ -66,7 +69,13 @@ export function Goals() {
 
       <ul className="goal-list">
         {goals.map((goal) => (
-          <GoalRow key={goal.id} goal={goal} onContribute={(amount) => addContribution(goal.id, amount)} onDelete={() => deleteGoal(goal.id)} />
+          <GoalRow
+            key={goal.id}
+            goal={goal}
+            currency={settings.currency}
+            onContribute={(amount) => addContribution(goal.id, amount)}
+            onDelete={() => deleteGoal(goal.id)}
+          />
         ))}
       </ul>
 
@@ -75,8 +84,19 @@ export function Goals() {
   )
 }
 
-function GoalRow({ goal, onContribute, onDelete }: { goal: SavingsGoal; onContribute: (amount: number) => void; onDelete: () => void }) {
+function GoalRow({
+  goal,
+  currency,
+  onContribute,
+  onDelete,
+}: {
+  goal: SavingsGoal
+  currency: string
+  onContribute: (amount: number) => void
+  onDelete: () => void
+}) {
   const [contribution, setContribution] = useState('')
+  const money = (n: number) => formatMoney(n, currency)
   const pct = Math.min((goal.current_amount / goal.target_amount) * 100, 100)
   const remaining = Math.max(goal.target_amount - goal.current_amount, 0)
   const monthlyNeeded = goal.target_date && remaining > 0 ? remaining / monthsUntil(goal.target_date) : null
@@ -95,8 +115,8 @@ function GoalRow({ goal, onContribute, onDelete }: { goal: SavingsGoal; onContri
       </div>
 
       <div className="goal-progress-meta">
-        <span>{goal.current_amount.toFixed(2)} / {goal.target_amount.toFixed(2)} ({pct.toFixed(0)}%)</span>
-        {monthlyNeeded !== null && <span>Save ~{monthlyNeeded.toFixed(2)}/month to hit your target date</span>}
+        <span>{money(goal.current_amount)} / {money(goal.target_amount)} ({pct.toFixed(0)}%)</span>
+        {monthlyNeeded !== null && <span>Save ~{money(monthlyNeeded)}/month to hit your target date</span>}
       </div>
 
       <div className="goal-contribute">

@@ -6,6 +6,7 @@ import { Layout } from './components/Layout'
 import { Login } from './pages/Login'
 import { Signup } from './pages/Signup'
 import { Dashboard } from './pages/Dashboard'
+import { Expenses } from './pages/Expenses'
 import { Analysis } from './pages/Analysis'
 import { Categories } from './pages/Categories'
 import { MonthlyBills } from './pages/MonthlyBills'
@@ -30,6 +31,16 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <Dashboard />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/expenses"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Expenses />
                 </Layout>
               </ProtectedRoute>
             }

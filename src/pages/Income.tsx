@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { useIncome, monthlyEquivalent } from '../hooks/useIncome'
 import { totalMonthlyIncome, oneTimeIncomeThisMonth } from '../lib/cashflow'
+import { useSettings } from '../hooks/useSettings'
+import { formatMoney } from '../lib/format'
 import type { IncomeFrequency } from '../lib/types'
 import './Income.css'
 
@@ -13,6 +15,8 @@ const FREQUENCIES: { value: IncomeFrequency; label: string }[] = [
 
 export function Income() {
   const { income, addIncome, deleteIncome } = useIncome()
+  const { settings } = useSettings()
+  const money = (n: number) => formatMoney(n, settings.currency)
   const [source, setSource] = useState('')
   const [amount, setAmount] = useState('')
   const [frequency, setFrequency] = useState<IncomeFrequency>('monthly')
@@ -53,11 +57,11 @@ export function Income() {
       <div className="income-summary stagger">
         <div className="card income-summary-card">
           <span className="income-summary-label">Recurring monthly income</span>
-          <span className="income-summary-value">{monthlyTotal.toFixed(2)}</span>
+          <span className="income-summary-value">{money(monthlyTotal)}</span>
         </div>
         <div className="card income-summary-card">
           <span className="income-summary-label">One-time this month</span>
-          <span className="income-summary-value">{oneTimeThisMonth.toFixed(2)}</span>
+          <span className="income-summary-value">{money(oneTimeThisMonth)}</span>
         </div>
       </div>
 
@@ -96,12 +100,12 @@ export function Income() {
             <div className="income-row-main">
               <span className="income-source">{i.source}</span>
               <span className="income-freq">
-                {i.is_recurring ? `${FREQUENCIES.find((f) => f.value === i.frequency)?.label} · ~${monthlyEquivalent(i.amount, i.frequency).toFixed(2)}/mo` : 'One-time'}
+                {i.is_recurring ? `${FREQUENCIES.find((f) => f.value === i.frequency)?.label} · ~${money(monthlyEquivalent(i.amount, i.frequency))}/mo` : 'One-time'}
               </span>
             </div>
             <div className="income-row-meta">
               <span>{i.received_date}</span>
-              <span className="income-amount">{i.amount.toFixed(2)}</span>
+              <span className="income-amount">{money(i.amount)}</span>
               <button type="button" className="income-delete" onClick={() => deleteIncome(i.id)} aria-label="Delete">
                 ×
               </button>

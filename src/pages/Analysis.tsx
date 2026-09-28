@@ -7,6 +7,8 @@ import { useDebts } from '../hooks/useDebts'
 import { analyzeExpenses, generateInsights, type Insight, type InsightType } from '../lib/analysis'
 import { generateCashflowInsights } from '../lib/cashflow'
 import { InsightCards } from '../components/InsightCards'
+import { useSettings } from '../hooks/useSettings'
+import { formatMoney } from '../lib/format'
 import type { Expense } from '../lib/types'
 import './Analysis.css'
 
@@ -17,6 +19,8 @@ export function Analysis() {
   const { categories } = useCategories()
   const { income } = useIncome()
   const { debts } = useDebts()
+  const { settings } = useSettings()
+  const money = (n: number) => formatMoney(n, settings.currency)
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -49,11 +53,11 @@ export function Analysis() {
       <div className="analysis-summary">
         <div className="analysis-summary-card">
           <span className="analysis-label">{analysis.currentMonthLabel}</span>
-          <span className="analysis-value">{analysis.currentTotal.toFixed(2)}</span>
+          <span className="analysis-value">{money(analysis.currentTotal)}</span>
         </div>
         <div className="analysis-summary-card">
           <span className="analysis-label">{analysis.previousMonthLabel}</span>
-          <span className="analysis-value">{analysis.previousTotal.toFixed(2)}</span>
+          <span className="analysis-value">{money(analysis.previousTotal)}</span>
         </div>
         <div className="analysis-summary-card">
           <span className="analysis-label">Change</span>
@@ -72,8 +76,8 @@ export function Analysis() {
           <div className="essential-split-fill" style={{ width: `${essentialPct}%` }} />
         </div>
         <div className="essential-split-legend">
-          <span><span className="dot dot-essential" /> Essential {analysis.essentialTotal.toFixed(2)} ({essentialPct.toFixed(0)}%)</span>
-          <span><span className="dot dot-discretionary" /> Discretionary {analysis.discretionaryTotal.toFixed(2)} ({discretionaryPct.toFixed(0)}%)</span>
+          <span><span className="dot dot-essential" /> Essential {money(analysis.essentialTotal)} ({essentialPct.toFixed(0)}%)</span>
+          <span><span className="dot dot-discretionary" /> Discretionary {money(analysis.discretionaryTotal)} ({discretionaryPct.toFixed(0)}%)</span>
         </div>
       </div>
 
@@ -85,7 +89,7 @@ export function Analysis() {
               <li key={b.categoryId} className="card">
                 <div className="budget-progress-header">
                   <span>{b.categoryName}</span>
-                  <span>{b.currentTotal.toFixed(2)} / {b.monthlyBudget!.toFixed(2)}</span>
+                  <span>{money(b.currentTotal)} / {money(b.monthlyBudget!)}</span>
                 </div>
                 <div className="budget-progress-bar">
                   <div
@@ -114,8 +118,8 @@ export function Analysis() {
             {analysis.breakdown.map((b) => (
               <tr key={b.categoryId ?? 'uncategorized'}>
                 <td>{b.categoryName}</td>
-                <td>{b.currentTotal.toFixed(2)}</td>
-                <td>{b.previousTotal.toFixed(2)}</td>
+                <td>{money(b.currentTotal)}</td>
+                <td>{money(b.previousTotal)}</td>
                 <td className={b.changeAmount > 0 ? 'analysis-up' : b.changeAmount < 0 ? 'analysis-down' : ''}>
                   {b.changePct === null ? '—' : `${(b.changePct * 100).toFixed(0)}%`}
                 </td>

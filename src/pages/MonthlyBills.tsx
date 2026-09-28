@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { useCategories } from '../hooks/useCategories'
 import { useRecurringBills } from '../hooks/useRecurringBills'
+import { useSettings } from '../hooks/useSettings'
+import { formatMoney } from '../lib/format'
 import type { Expense, RecurringBill } from '../lib/types'
 import './MonthlyBills.css'
 
@@ -27,6 +29,8 @@ export function MonthlyBills() {
   const { user } = useAuth()
   const { categories } = useCategories()
   const { bills, addBill, deleteBill } = useRecurringBills()
+  const { settings } = useSettings()
+  const money = (n: number) => formatMoney(n, settings.currency)
   const [monthExpenses, setMonthExpenses] = useState<Expense[]>([])
   const [showAddForm, setShowAddForm] = useState(false)
   const [payingBillId, setPayingBillId] = useState<string | null>(null)
@@ -124,12 +128,12 @@ export function MonthlyBills() {
                 </span>
                 <span className="bill-name">{bill.name}</span>
                 {bill.due_day && <span className="bill-due">Due day {bill.due_day}</span>}
-                {bill.expected_amount != null && <span className="bill-expected">~{bill.expected_amount.toFixed(2)}</span>}
+                {bill.expected_amount != null && <span className="bill-expected">~{money(bill.expected_amount)}</span>}
               </div>
 
               <div className="bill-status">
                 {payment ? (
-                  <span className="bill-paid">Paid {payment.expense_date} · {payment.amount.toFixed(2)}</span>
+                  <span className="bill-paid">Paid {payment.expense_date} · {money(payment.amount)}</span>
                 ) : (
                   <span className="bill-unpaid">Not paid this month</span>
                 )}

@@ -6,6 +6,23 @@
   gap: 1.25rem;
 }
 
+.dashboard-top {
+  display: flex;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  align-items: stretch;
+}
+
+.dashboard-top > .health-gauge {
+  flex: 1.2;
+  min-width: 320px;
+}
+
+.dashboard-top > .upcoming-payments {
+  flex: 1;
+  min-width: 280px;
+}
+
 .dashboard-stats {
   display: flex;
   gap: 0.75rem;
@@ -14,7 +31,7 @@
 
 .stat-card {
   flex: 1;
-  min-width: 150px;
+  min-width: 170px;
   padding: 1rem 1.1rem;
   display: flex;
   flex-direction: column;
@@ -29,8 +46,17 @@
 }
 
 .stat-value {
-  font-size: 1.35rem;
+  font-size: 1.15rem;
   font-weight: 700;
+  white-space: nowrap;
+}
+
+.dashboard-minor-info {
+  display: flex;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
 }
 
 .stat-value-sm {
@@ -63,24 +89,17 @@
   font-weight: 600;
 }
 
-.dashboard-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
+.dashboard-expenses-link {
+  margin: 0;
 }
 
-@media (min-width: 780px) {
-  .dashboard-grid {
-    flex-direction: row;
-    align-items: flex-start;
-  }
+.dashboard-expenses-link a {
+  color: var(--color-primary);
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 0.92rem;
+}
 
-  .dashboard-grid > .expense-form {
-    flex: 0 0 420px;
-  }
-
-  .dashboard-grid > .expense-list {
-    flex: 1;
-    min-width: 0;
-  }
+.dashboard-expenses-link a:hover {
+  text-decoration: underline;
 }

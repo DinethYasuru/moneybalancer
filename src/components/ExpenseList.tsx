@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { Category, Expense } from '../lib/types'
+import { useSettings } from '../hooks/useSettings'
+import { formatMoney } from '../lib/format'
 import './ExpenseList.css'
 
 interface ExpenseListProps {
@@ -17,6 +19,7 @@ function toCsv(expenses: Expense[], categories: Category[]): string {
 }
 
 export function ExpenseList({ expenses, categories, onDelete }: ExpenseListProps) {
+  const { settings } = useSettings()
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const categoryOf = (id: string | null) => categories.find((c) => c.id === id)
@@ -47,7 +50,7 @@ export function ExpenseList({ expenses, categories, onDelete }: ExpenseListProps
     <div className="expense-list card">
       <div className="expense-list-header">
         <h2>Recent expenses</h2>
-        <span className="expense-list-total">Total: {total.toFixed(2)}</span>
+        <span className="expense-list-total">Total: {formatMoney(total, settings.currency)}</span>
       </div>
 
       <div className="expense-list-filters">
@@ -93,7 +96,7 @@ export function ExpenseList({ expenses, categories, onDelete }: ExpenseListProps
                 </div>
                 <div className="expense-list-meta">
                   <span>{e.expense_date}</span>
-                  <span className="expense-list-amount">{e.currency} {e.amount.toFixed(2)}</span>
+                  <span className="expense-list-amount">{formatMoney(e.amount, e.currency)}</span>
                 </div>
                 {onDelete && (
                   <button

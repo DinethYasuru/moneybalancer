@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
@@ -6,11 +6,23 @@ import type { Expense } from '../lib/types'
 import { useCategories } from '../hooks/useCategories'
 import { useIncome } from '../hooks/useIncome'
 import { useDebts } from '../hooks/useDebts'
+import { useRecurringBills } from '../hooks/useRecurringBills'
 import { useSettings } from '../hooks/useSettings'
 import { analyzeExpenses } from '../lib/analysis'
-import { totalMonthlyIncome, totalDebtBalance, debtToIncomeRatio, safeToSpendPerDay, findPendingAutoDeductions, totalPendingAutoDeductions } from '../lib/cashflow'
-import { ExpenseForm } from '../components/ExpenseForm'
-import { ExpenseList } from '../components/ExpenseList'
+import {
+  totalMonthlyIncome,
+  totalDebtBalance,
+  debtToIncomeRatio,
+  safeToSpendPerDay,
+  findPendingAutoDeductions,
+  totalPendingAutoDeductions,
+  calculateHealthScore,
+} from '../lib/cashflow'
+import { getUpcomingPayments } from '../lib/upcoming'
+import { formatMoney } from '../lib/format'
+import { AnimatedNumber } from '../components/AnimatedNumber'
+import { HealthScoreGauge } from '../components/HealthScoreGauge'
+import { UpcomingPayments } from '../components/UpcomingPayments'
 import './Dashboard.css'
 
 export function Dashboard() {
@@ -18,31 +30,28 @@ export function Dashboard() {
   const { categories, loading: categoriesLoading } = useCategories()
   const { income } = useIncome()
   const { debts } = useDebts()
+  const { bills } = useRecurringBills()
   const { settings } = useSettings()
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
 
-  const loadExpenses = useCallback(async () => {
+  useEffect(() => {
     if (!user) return
-    const { data } = await supabase
+    supabase
       .from('expenses')
       .select('*')
       .order('expense_date', { ascending: false })
-      .limit(50)
-    setExpenses(data ?? [])
-    setLoading(false)
+      .limit(80)
+      .then(({ data }) => {
+        setExpenses(data ?? [])
+        setLoading(false)
+      })
   }, [user])
 
-  useEffect(() => {
-    loadExpenses()
-  }, [loadExpenses])
-
-  async function deleteExpense(id: string) {
-    await supabase.from('expenses').delete().eq('id', id)
-    setExpenses((prev) => prev.filter((e) => e.id !== id))
-  }
-
   if (loading || categoriesLoading) return <p>Loading…</p>
+
+  const currency = settings.currency
+  const money = (n: number) => formatMoney(n, currency)
 
   const analysis = analyzeExpenses(expenses, categories)
   const topCategory = analysis.breakdown[0]
@@ -54,21 +63,35 @@ export function Dashboard() {
   const safeToday = safeToSpendPerDay(monthlyIncome, analysis.currentTotal + committedNotYetLogged)
   const netThisMonth = monthlyIncome - analysis.currentTotal
   const widgets = settings.dashboard_widgets
+  const upcoming = getUpcomingPayments(bills, debts, categories, expenses)
+  const categoriesOverBudget = analysis.breakdown.filter((b) => b.budgetUsedPct !== null && b.budgetUsedPct >= 1).length
+  const health = calculateHealthScore({ monthlyIncome, netThisMonth, dti, categoriesOverBudget })
+
+  const now = new Date()
+  const daysLeftInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate()
+  const txnCountThisMonth = expenses.filter((e) => e.expense_date.slice(0, 7) === now.toISOString().slice(0, 7)).length
 
   return (
-    <div className="dashboard">
-      <div className="dashboard-stats">
-        <div className="stat-card card">
+    <div className="dashboard page-enter">
+      <div className="dashboard-top stagger">
+        <HealthScoreGauge health={health} />
+        <UpcomingPayments items={upcoming} currency={currency} />
+      </div>
+
+      <div className="dashboard-stats stagger">
+        <div className="stat-card card card-hover">
           <span className="stat-label">This month</span>
-          <span className="stat-value">{analysis.currentTotal.toFixed(2)}</span>
-        </div>
-        <div className="stat-card card">
-          <span className="stat-label">Top category</span>
-          <span className="stat-value stat-value-sm">
-            {topCategory ? `${topCategory.categoryName} · ${topCategory.currentTotal.toFixed(2)}` : '—'}
+          <span className="stat-value">
+            <AnimatedNumber value={analysis.currentTotal} format={money} />
           </span>
         </div>
-        <div className="stat-card card">
+        <div className="stat-card card card-hover">
+          <span className="stat-label">Top category</span>
+          <span className="stat-value stat-value-sm">
+            {topCategory ? `${topCategory.categoryName} · ${money(topCategory.currentTotal)}` : '—'}
+          </span>
+        </div>
+        <div className="stat-card card card-hover">
           <span className="stat-label">vs last month</span>
           <span className={`stat-value ${analysis.totalChangePct !== null && analysis.totalChangePct > 0 ? 'stat-up' : 'stat-down'}`}>
             {analysis.totalChangePct === null ? '—' : `${(analysis.totalChangePct * 100).toFixed(0)}%`}
@@ -76,33 +99,40 @@ export function Dashboard() {
         </div>
 
         {widgets.income && monthlyIncome > 0 && (
-          <div className="stat-card card">
-            <span className="stat-label">Net this month</span>
+          <div className="stat-card card card-hover">
+            <span className="stat-label">Remaining balance</span>
             <span className={`stat-value ${netThisMonth >= 0 ? 'stat-down' : 'stat-up'}`}>
-              {netThisMonth >= 0 ? '+' : ''}{netThisMonth.toFixed(2)}
+              {netThisMonth >= 0 ? '+' : ''}
+              <AnimatedNumber value={netThisMonth} format={money} />
             </span>
           </div>
         )}
 
         {widgets.safeToSpend && monthlyIncome > 0 && (
-          <div className="stat-card card">
+          <div className="stat-card card card-hover">
             <span className="stat-label">Safe to spend/day</span>
-            <span className="stat-value">{safeToday.toFixed(2)}</span>
-            {committedNotYetLogged > 0 && (
-              <span className="stat-value-sub">{committedNotYetLogged.toFixed(2)} set aside for auto-debits</span>
-            )}
+            <span className="stat-value">
+              <AnimatedNumber value={safeToday} format={money} />
+            </span>
+            {committedNotYetLogged > 0 && <span className="stat-value-sub">{money(committedNotYetLogged)} set aside for auto-debits</span>}
           </div>
         )}
 
         {widgets.debt && debtBalance > 0 && (
-          <div className="stat-card card">
+          <div className="stat-card card card-hover">
             <span className="stat-label">Total debt</span>
             <span className="stat-value stat-up">
-              {debtBalance.toFixed(2)}
+              <AnimatedNumber value={debtBalance} format={money} />
               {dti !== null && <span className="stat-value-sub"> · {dti.toFixed(0)}% of income</span>}
             </span>
           </div>
         )}
+      </div>
+
+      <div className="dashboard-minor-info stagger">
+        <span>📅 {daysLeftInMonth} day{daysLeftInMonth === 1 ? '' : 's'} left this month</span>
+        <span>🧾 {txnCountThisMonth} transaction{txnCountThisMonth === 1 ? '' : 's'} logged this month</span>
+        {analysis.discretionaryTotal > 0 && <span>🎯 {money(analysis.discretionaryTotal)} spent on discretionary this month</span>}
       </div>
 
       {monthlyIncome === 0 && (
@@ -111,10 +141,9 @@ export function Dashboard() {
         </p>
       )}
 
-      <div className="dashboard-grid">
-        <ExpenseForm categories={categories} onSaved={loadExpenses} />
-        <ExpenseList expenses={expenses} categories={categories} onDelete={deleteExpense} />
-      </div>
+      <p className="dashboard-expenses-link">
+        <Link to="/expenses">Add an expense or browse recent activity →</Link>
+      </p>
     </div>
   )
 }

@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { useDebts } from '../hooks/useDebts'
 import { useCategories } from '../hooks/useCategories'
+import { useSettings } from '../hooks/useSettings'
+import { formatMoney } from '../lib/format'
 import {
   totalDebtBalance,
   totalMinimumPayments,
@@ -28,6 +30,8 @@ export function Debts() {
   const { debts, addDebt, logPayment, closeDebt } = useDebts()
   const { categories } = useCategories()
   const { user } = useAuth()
+  const { settings } = useSettings()
+  const money = (n: number) => formatMoney(n, settings.currency)
   const [showAddForm, setShowAddForm] = useState(false)
   const [payingDebtId, setPayingDebtId] = useState<string | null>(null)
   const [extraPayment, setExtraPayment] = useState('0')
@@ -66,16 +70,16 @@ export function Debts() {
         <div className="debts-summary stagger">
           <div className="card debts-summary-card">
             <span className="debts-summary-label">Total owed</span>
-            <span className="debts-summary-value debts-summary-danger">{totalBalance.toFixed(2)}</span>
+            <span className="debts-summary-value debts-summary-danger">{money(totalBalance)}</span>
           </div>
           <div className="card debts-summary-card">
             <span className="debts-summary-label">Minimum payments/mo</span>
-            <span className="debts-summary-value">{totalMinPayments.toFixed(2)}</span>
+            <span className="debts-summary-value">{money(totalMinPayments)}</span>
           </div>
           <div className="card debts-summary-card">
             <span className="debts-summary-label">Interest cost/mo</span>
             <span className="debts-summary-value debts-summary-danger">
-              {debts.reduce((sum, d) => sum + monthlyInterestCost(d), 0).toFixed(2)}
+              {money(debts.reduce((sum, d) => sum + monthlyInterestCost(d), 0))}
             </span>
           </div>
         </div>
@@ -112,7 +116,7 @@ export function Debts() {
               <div className="debt-stats">
                 <div>
                   <span className="debt-stat-label">Balance</span>
-                  <span className="debt-stat-value debt-stat-danger">{debt.current_balance.toFixed(2)}</span>
+                  <span className="debt-stat-value debt-stat-danger">{money(debt.current_balance)}</span>
                 </div>
                 {debt.interest_rate != null && (
                   <div>
@@ -123,13 +127,13 @@ export function Debts() {
                 {debt.minimum_payment != null && (
                   <div>
                     <span className="debt-stat-label">Min payment</span>
-                    <span className="debt-stat-value">{debt.minimum_payment.toFixed(2)}</span>
+                    <span className="debt-stat-value">{money(debt.minimum_payment)}</span>
                   </div>
                 )}
                 {monthlyInterest > 0 && (
                   <div>
                     <span className="debt-stat-label">Costs you/mo</span>
-                    <span className="debt-stat-value debt-stat-danger">{monthlyInterest.toFixed(2)}</span>
+                    <span className="debt-stat-value debt-stat-danger">{money(monthlyInterest)}</span>
                   </div>
                 )}
               </div>
@@ -205,7 +209,7 @@ export function Debts() {
                   <span className="debts-stat-label">vs minimums only</span>
                   <strong className="payoff-savings-value">
                     {planNoExtra.monthsToDebtFree - plan.monthsToDebtFree} months faster, saves ~
-                    {(planNoExtra.totalInterestPaid - plan.totalInterestPaid).toFixed(2)} in interest
+                    {money(planNoExtra.totalInterestPaid - plan.totalInterestPaid)} in interest
                   </strong>
                 </div>
               )}

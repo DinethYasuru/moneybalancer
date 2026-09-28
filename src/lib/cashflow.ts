@@ -195,3 +195,45 @@ export function generateCashflowInsights(income: Income[], debts: Debt[], expens
 
   return insights
 }
+
+export interface HealthScoreComponent {
+  label: string
+  score: number
+}
+
+export interface HealthScore {
+  score: number
+  label: string
+  components: HealthScoreComponent[]
+}
+
+/**
+ * A rough, explainable 0-100 wellbeing score — not a credit score, just a
+ * single number that blends whether you're saving, how loaded with debt
+ * you are, and whether you're sticking to budgets, so there's one thing
+ * to watch trend over time.
+ */
+export function calculateHealthScore(params: {
+  monthlyIncome: number
+  netThisMonth: number
+  dti: number | null
+  categoriesOverBudget: number
+}): HealthScore {
+  const components: HealthScoreComponent[] = []
+
+  if (params.monthlyIncome > 0) {
+    const savingsRate = params.netThisMonth / params.monthlyIncome
+    components.push({ label: 'Savings rate', score: Math.max(0, Math.min(100, 50 + savingsRate * 250)) })
+  }
+
+  if (params.dti !== null) {
+    components.push({ label: 'Debt load', score: Math.max(0, Math.min(100, 100 - params.dti * 2)) })
+  }
+
+  components.push({ label: 'Budget discipline', score: Math.max(0, 100 - params.categoriesOverBudget * 25) })
+
+  const score = Math.round(components.reduce((sum, c) => sum + c.score, 0) / components.length)
+  const label = score >= 80 ? 'Excellent' : score >= 60 ? 'Good' : score >= 40 ? 'Fair' : score >= 20 ? 'Needs attention' : 'Critical'
+
+  return { score, label, components }
+}
