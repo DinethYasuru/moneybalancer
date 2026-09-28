@@ -14,8 +14,35 @@ function stripCodeFence(text: string): string {
   return fenced ? fenced[1] : trimmed
 }
 
+/**
+ * Copy-pasted API keys very commonly pick up a trailing space or newline,
+ * which silently turns into a 401 "invalid api key" that looks like the
+ * key itself is wrong. Trim everything defensively, and drop a trailing
+ * slash on the base URL so it doesn't produce a double slash in requests.
+ */
+function normalizeConfig(config: AiConfig): AiConfig {
+  return {
+    ...config,
+    api_key: config.api_key.trim(),
+    base_url: config.base_url.trim().replace(/\/+$/, ''),
+    model: config.model.trim(),
+  }
+}
+
+async function friendlyError(res: Response, provider: string): Promise<Error> {
+  const body = await res.text()
+  if (res.status === 401 || res.status === 403) {
+    return new Error(
+      `${provider} rejected the API key (${res.status}). Double-check the key in Settings — a common cause is an extra space or line break from copy-pasting. Raw response: ${body.slice(0, 200)}`,
+    )
+  }
+  return new Error(`AI request failed (${res.status}): ${body.slice(0, 300)}`)
+}
+
 /** Low-level call: sends one user message (text and/or an image) and returns the raw text reply. */
-async function callAi(config: AiConfig, systemPrompt: string, userText: string, image?: { base64: string; mimeType: string }): Promise<string> {
+async function callAi(rawConfig: AiConfig, systemPrompt: string, userText: string, image?: { base64: string; mimeType: string }): Promise<string> {
+  const config = normalizeConfig(rawConfig)
+
   if (config.provider === 'anthropic') {
     const content: unknown[] = []
     if (image) content.push({ type: 'image', source: { type: 'base64', media_type: image.mimeType, data: image.base64 } })
@@ -31,7 +58,7 @@ async function callAi(config: AiConfig, systemPrompt: string, userText: string, 
       },
       body: JSON.stringify({ model: config.model, max_tokens: 4096, system: systemPrompt, messages: [{ role: 'user', content }] }),
     })
-    if (!res.ok) throw new Error(`AI request failed (${res.status}): ${await res.text()}`)
+    if (!res.ok) throw await friendlyError(res, 'Anthropic')
     const data = await res.json()
     return data.content?.[0]?.text ?? ''
   }
@@ -52,7 +79,7 @@ async function callAi(config: AiConfig, systemPrompt: string, userText: string, 
       ],
     }),
   })
-  if (!res.ok) throw new Error(`AI request failed (${res.status}): ${await res.text()}`)
+  if (!res.ok) throw await friendlyError(res, 'The AI provider')
   const data = await res.json()
   return data.choices?.[0]?.message?.content ?? ''
 }

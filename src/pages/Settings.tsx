@@ -41,7 +41,9 @@ export function Settings() {
   }
 
   async function handleAiSave() {
-    await handleChange({ ai_config: aiDraft })
+    const cleaned = { ...aiDraft, api_key: aiDraft.api_key.trim(), base_url: aiDraft.base_url.trim().replace(/\/+$/, ''), model: aiDraft.model.trim() }
+    setAiDraft(cleaned)
+    await handleChange({ ai_config: cleaned })
   }
 
   async function handleTest() {
