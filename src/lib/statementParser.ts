@@ -29,10 +29,35 @@ const MONTHS: Record<string, string> = {
   jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12',
 }
 
-function normalizeDate(token: string): string | null {
+/**
+ * Some banks' PDF exports truncate the date column's year to 3 digits
+ * (e.g. "25/08/202" instead of "25/08/2026") — a column-width artifact,
+ * not a real 3-digit year. When that happens, borrow the missing digit
+ * from a reference year found elsewhere in the document (e.g. the
+ * statement's own "Period" or "Date & Time" line, which isn't
+ * truncated).
+ */
+function findReferenceYear(fullText: string): string | null {
+  const matches = fullText.match(/\b20\d{2}\b/g)
+  if (!matches || matches.length === 0) return null
+  const counts = new Map<string, number>()
+  for (const y of matches) counts.set(y, (counts.get(y) ?? 0) + 1)
+  return [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0]
+}
+
+function normalizeDate(token: string, referenceYear?: string | null): string | null {
   for (const [pattern, toIso] of DATE_PATTERNS) {
     const m = token.match(pattern)
-    if (m) return toIso(m)
+    if (!m) continue
+    const iso = toIso(m)
+    if (!iso) continue
+    const year = iso.slice(0, iso.indexOf('-'))
+    if (year.length === 3) {
+      if (referenceYear && referenceYear.startsWith(year)) return referenceYear + iso.slice(3)
+      continue // unresolvable truncated year — treat as no match
+    }
+    if (year.length !== 4) continue
+    return iso
   }
   // dd MMM yyyy, e.g. 05 Sep 2026
   const m = token.match(/^(\d{1,2})[\s-]([A-Za-z]{3})[\s-](\d{4})$/)
@@ -49,42 +74,75 @@ function parseAmount(token: string): number | null {
   return Number.isFinite(n) ? n : null
 }
 
+const NUMERIC_TOKEN = /^-?[\d,]+\.\d{2}$/
+
 /**
- * Heuristic line parser: DATE  DESCRIPTION...  AMOUNT  [DR|CR]
- * Bank statement layouts vary a lot, so this is a best-effort first pass —
- * the caller always shows results in an editable review table.
+ * Heuristic line parser: DATE  DESCRIPTION...  [DEBIT]  [CREDIT]  [BALANCE]
+ * or DATE DESCRIPTION... AMOUNT [DR|CR]. Bank statement layouts vary a
+ * lot, so this is a best-effort first pass — the caller always shows
+ * results in an editable review table.
+ *
+ * When a line ends in two numbers (amount + running balance, common in
+ * "Debits | Credits | Balance" layouts), the second-to-last is the
+ * amount and the last is the balance — and since blank Debit/Credit
+ * cells produce no text at all, there's no positional way to tell which
+ * column a lone number came from. The running balance solves that: if
+ * it's known from the previous row, whether the balance went up or down
+ * tells us debit vs credit directly, which is more reliable than
+ * guessing from keywords.
  */
-function parseLine(line: string): ParsedTransaction | null {
+function parseLine(line: string, referenceYear: string | null, previousBalance: number | null): { transaction: ParsedTransaction; balance: number | null } | null {
   const trimmed = line.trim()
   if (!trimmed) return null
 
   const tokens = trimmed.split(/\s+/)
   if (tokens.length < 3) return null
 
-  const isoDate = normalizeDate(tokens[0])
+  const isoDate = normalizeDate(tokens[0], referenceYear)
   if (!isoDate) return null
 
-  let direction: 'debit' | 'credit' | null = null
-  let amountToken = tokens[tokens.length - 1]
+  let explicitDirection: 'debit' | 'credit' | null = null
+  let scanEnd = tokens.length
 
-  if (/^(DR|CR)$/i.test(amountToken)) {
-    direction = amountToken.toUpperCase() === 'DR' ? 'debit' : 'credit'
-    amountToken = tokens[tokens.length - 2]
+  if (/^(DR|CR)$/i.test(tokens[scanEnd - 1])) {
+    explicitDirection = tokens[scanEnd - 1].toUpperCase() === 'DR' ? 'debit' : 'credit'
+    scanEnd--
   }
 
-  const amount = parseAmount(amountToken)
-  if (amount === null || amount <= 0) return null
+  const numericValues: number[] = []
+  let idx = scanEnd - 1
+  while (idx > 0 && NUMERIC_TOKEN.test(tokens[idx])) {
+    numericValues.unshift(Number(tokens[idx].replace(/,/g, '')))
+    idx--
+  }
+  if (numericValues.length === 0) return null
 
-  const descEnd = direction ? tokens.length - 2 : tokens.length - 1
-  const description = tokens.slice(1, descEnd).join(' ').trim()
+  const descEnd = idx + 1
+  const description = tokens.slice(1, descEnd).join(' ').replace(/\bNA\b$/i, '').trim()
   if (!description) return null
 
-  if (!direction) {
-    const lower = trimmed.toLowerCase()
-    direction = /\b(credit|deposit|received|refund)\b/.test(lower) ? 'credit' : 'debit'
+  let amount: number
+  let balance: number | null = null
+
+  if (numericValues.length >= 2) {
+    // Trailing pair: [amount, balance]. Extra leading numbers (rare) are ignored.
+    amount = Math.abs(numericValues[numericValues.length - 2])
+    balance = numericValues[numericValues.length - 1]
+  } else {
+    amount = Math.abs(numericValues[0])
+  }
+  if (amount <= 0) return null
+
+  let direction: 'debit' | 'credit'
+  if (explicitDirection) {
+    direction = explicitDirection
+  } else if (balance !== null && previousBalance !== null) {
+    direction = balance >= previousBalance ? 'credit' : 'debit'
+  } else {
+    direction = /\b(credit|deposit|received|refund)\b/i.test(description) ? 'credit' : 'debit'
   }
 
-  return { date: isoDate, description, amount, direction }
+  return { transaction: { date: isoDate, description, amount, direction }, balance }
 }
 
 const HEADER_ALIASES: Record<string, string[]> = {
@@ -206,6 +264,8 @@ export async function parseStatementCsv(file: File): Promise<ParsedTransaction[]
   return parseStatementText(text)
 }
 
+const ROW_Y_TOLERANCE = 2.5
+
 export async function parseStatementPdf(file: File): Promise<ParsedTransaction[]> {
   const buffer = await file.arrayBuffer()
   const pdf = await pdfjsLib.getDocument({ data: buffer }).promise
@@ -215,25 +275,45 @@ export async function parseStatementPdf(file: File): Promise<ParsedTransaction[]
     const page = await pdf.getPage(pageNum)
     const content = await page.getTextContent()
 
-    const rows = new Map<number, string[]>()
-    for (const item of content.items) {
-      if (!('str' in item) || !item.str.trim()) continue
-      const y = Math.round(item.transform[5])
-      const bucket = rows.get(y) ?? []
-      bucket.push(item.str)
-      rows.set(y, bucket)
+    const items = content.items
+      .filter((it) => 'str' in it && it.str.trim().length > 0)
+      .map((it) => {
+        const textItem = it as { str: string; transform: number[] }
+        return { str: textItem.str, x: textItem.transform[4], y: textItem.transform[5] }
+      })
+      .sort((a, b) => b.y - a.y || a.x - b.x)
+
+    // Cluster into rows by y-proximity rather than exact match — table
+    // cells can land on slightly different baselines (font metrics, cell
+    // padding), which would otherwise split one visual row into several
+    // fragments too short to parse.
+    const rowBuckets: { y: number; items: typeof items }[] = []
+    for (const item of items) {
+      const bucket = rowBuckets.find((b) => Math.abs(b.y - item.y) <= ROW_Y_TOLERANCE)
+      if (bucket) bucket.items.push(item)
+      else rowBuckets.push({ y: item.y, items: [item] })
     }
 
-    const sortedYs = Array.from(rows.keys()).sort((a, b) => b - a)
-    for (const y of sortedYs) {
-      lines.push(rows.get(y)!.join(' '))
+    for (const bucket of rowBuckets) {
+      lines.push(
+        bucket.items
+          .sort((a, b) => a.x - b.x)
+          .map((it) => it.str)
+          .join(' '),
+      )
     }
   }
 
+  const referenceYear = findReferenceYear(lines.join('\n'))
+
   const transactions: ParsedTransaction[] = []
+  let previousBalance: number | null = null
   for (const line of lines) {
-    const parsed = parseLine(line)
-    if (parsed) transactions.push(parsed)
+    const parsed = parseLine(line, referenceYear, previousBalance)
+    if (parsed) {
+      transactions.push(parsed.transaction)
+      if (parsed.balance !== null) previousBalance = parsed.balance
+    }
   }
   return transactions
 }
