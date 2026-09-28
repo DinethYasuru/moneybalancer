@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { parseStatementPdf, parseStatementCsv, parseStatementText, type ParsedTransaction } from '../lib/statementParser'
 import { extractTransactionsFromImage, type AiTransaction } from '../lib/ai'
+import { findTransferPairs } from '../lib/transfers'
 import type { Category } from '../lib/types'
 import { useCategories } from '../hooks/useCategories'
 import { useMerchantMemory } from '../hooks/useMerchantMemory'
@@ -11,7 +12,8 @@ import { useSettings } from '../hooks/useSettings'
 import { FileDropzone } from '../components/FileDropzone'
 import './StatementUpload.css'
 
-interface ReviewRow extends ParsedTransaction {
+interface ReviewRow extends Omit<ParsedTransaction, 'direction'> {
+  direction: 'debit' | 'credit' | 'transfer'
   categoryId: string
   include: boolean
   sourceIndex: number
@@ -43,7 +45,11 @@ export function StatementUpload() {
 
   const aiReady = settings.ai_config.enabled && !!settings.ai_config.api_key
 
-  function categorize(parsed: ParsedTransaction[], sourceIndex: number, aiCategories?: (string | null)[]): ReviewRow[] {
+  function categorize(
+    parsed: { date: string; description: string; amount: number; direction: 'debit' | 'credit' | 'transfer' }[],
+    sourceIndex: number,
+    aiCategories?: (string | null)[],
+  ): ReviewRow[] {
     return parsed.map((p, i) => {
       const aiCategoryName = aiCategories?.[i]
       const aiMatch = aiCategoryName ? categories.find((c) => c.name.toLowerCase() === aiCategoryName.toLowerCase()) : null
@@ -54,6 +60,20 @@ export function StatementUpload() {
         sourceIndex,
       }
     })
+  }
+
+  /**
+   * Flags internal transfers (money moved between the user's own
+   * accounts) so they don't get double-counted as both an expense and
+   * income — pairs a debit in one row with a matching credit elsewhere
+   * in the batch (same amount, within a couple of days), which is what
+   * a transfer between your own accounts looks like across statements.
+   */
+  function flagTransfers(allRows: ReviewRow[]): ReviewRow[] {
+    const transferIndexes = findTransferPairs(
+      allRows.map((r, i) => ({ index: i, date: r.date, description: r.description, amount: r.amount, direction: r.direction as 'debit' | 'credit' })),
+    )
+    return allRows.map((r, i) => (transferIndexes.has(i) ? { ...r, direction: 'transfer', categoryId: '' } : r))
   }
 
   async function handleParseFiles() {
@@ -83,13 +103,7 @@ export function StatementUpload() {
             categories.map((c) => c.name),
           )
           if (aiRows.length === 0) failures.push(`${f.name}: AI found no transactions in this image`)
-          const parsed: ParsedTransaction[] = aiRows.map((r) => ({
-            date: r.date,
-            description: r.description,
-            amount: r.amount,
-            direction: r.direction,
-          }))
-          allRows.push(...categorize(parsed, i, aiRows.map((r) => r.category)))
+          allRows.push(...categorize(aiRows, i, aiRows.map((r) => r.category)))
         } else {
           const parsed = isCsv ? await parseStatementCsv(f) : await parseStatementPdf(f)
           if (parsed.length === 0) failures.push(`${f.name}: no transactions detected`)
@@ -100,7 +114,7 @@ export function StatementUpload() {
       }
     }
 
-    setRows(allRows)
+    setRows(flagTransfers(allRows))
     if (failures.length > 0) {
       setError(`Some files had issues — you can still review/save what parsed:\n${failures.join('\n')}`)
     }
@@ -123,7 +137,7 @@ export function StatementUpload() {
     }
     const pastedFile = new File([pasteText], `pasted-statement-${Date.now()}.csv`, { type: 'text/csv' })
     setFiles([pastedFile])
-    setRows(categorize(parsed, 0))
+    setRows(flagTransfers(categorize(parsed, 0)))
   }
 
   function updateRow(index: number, patch: Partial<ReviewRow>) {
@@ -307,7 +321,7 @@ export function StatementUpload() {
               </thead>
               <tbody>
                 {rows.map((row, i) => (
-                  <tr key={i} className={row.include ? '' : 'statement-row-excluded'}>
+                  <tr key={i} className={`${row.include ? '' : 'statement-row-excluded'} ${row.direction === 'transfer' ? 'statement-row-transfer' : ''}`}>
                     <td>
                       <input type="checkbox" checked={row.include} onChange={(e) => updateRow(i, { include: e.target.checked })} />
                     </td>
@@ -329,7 +343,7 @@ export function StatementUpload() {
                       <select
                         value={row.direction}
                         onChange={(e) => {
-                          const direction = e.target.value as 'debit' | 'credit'
+                          const direction = e.target.value as 'debit' | 'credit' | 'transfer'
                           updateRow(i, {
                             direction,
                             categoryId: direction === 'debit' && !row.categoryId ? guessCategoryId(row.description, categories) : row.categoryId,
@@ -338,13 +352,14 @@ export function StatementUpload() {
                       >
                         <option value="debit">Expense (debit)</option>
                         <option value="credit">Income (credit)</option>
+                        <option value="transfer">Transfer (own accounts)</option>
                       </select>
                     </td>
                     <td>
                       <select
                         value={row.categoryId}
                         onChange={(e) => updateRow(i, { categoryId: e.target.value })}
-                        disabled={row.direction === 'credit'}
+                        disabled={row.direction !== 'debit'}
                       >
                         {categories.map((c: Category) => (
                           <option key={c.id} value={c.id}>

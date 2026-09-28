@@ -175,6 +175,15 @@
   opacity: 0.45;
 }
 
+.statement-row-transfer {
+  background: var(--color-primary-light);
+}
+
+.statement-row-transfer td select,
+.statement-row-transfer td input {
+  border-color: var(--color-primary);
+}
+
 .statement-upload button[type='button'] {
   padding: 0.7rem 1.2rem;
   font-size: 1rem;

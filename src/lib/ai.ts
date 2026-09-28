@@ -4,7 +4,7 @@ export interface AiTransaction {
   date: string // yyyy-mm-dd
   description: string
   amount: number
-  direction: 'debit' | 'credit'
+  direction: 'debit' | 'credit' | 'transfer'
   category: string | null
 }
 
@@ -71,12 +71,14 @@ const EXTRACTION_INSTRUCTIONS = (categoryNames: string[]) => `You extract financ
 Categories available (use these exact names when a transaction clearly matches one, otherwise use null): ${categoryNames.join(', ')}.
 
 Reply with ONLY a JSON array (no markdown, no commentary), one object per transaction found:
-[{"date":"YYYY-MM-DD","description":"...","amount":1234.56,"direction":"debit"|"credit","category":"<one of the category names above, or null>"}]
+[{"date":"YYYY-MM-DD","description":"...","amount":1234.56,"direction":"debit"|"credit"|"transfer","category":"<one of the category names above, or null>"}]
 
 Rules:
-- "debit" = money going out (an expense/payment). "credit" = money coming in (income/deposit).
+- "debit" = money going out (a real expense/payment to someone else). "credit" = money coming in (income/deposit).
+- "transfer" = money moved between the SAME person's own accounts (e.g. "own account transfer", "between my accounts", moving funds from a main account to a secondary one) — this is not real income or an expense, just money changing pockets.
 - amount is always a positive number.
 - If you can't confidently read a value, make your best guess rather than omitting the transaction.
+- Privacy: NEVER include account numbers, card numbers, IBANs, or other bank identifiers anywhere in your output, including inside "description" — mask or omit them. Only capture the date, a plain description, amount, and direction.
 - If there are no transactions visible, reply with []`
 
 async function extractAndParse(
@@ -101,7 +103,7 @@ async function extractAndParse(
       date: typeof t.date === 'string' ? t.date : new Date().toISOString().slice(0, 10),
       description: typeof t.description === 'string' ? t.description : '(no description)',
       amount: Number(t.amount) || 0,
-      direction: (t.direction === 'credit' ? 'credit' : 'debit') as 'debit' | 'credit',
+      direction: (t.direction === 'credit' || t.direction === 'transfer' ? t.direction : 'debit') as 'debit' | 'credit' | 'transfer',
       category: typeof t.category === 'string' ? t.category : null,
     }))
     .filter((t) => t.amount > 0)
