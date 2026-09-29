@@ -21,5 +21,6 @@ create index if not exists expenses_recurring_bill_idx on public.expenses (recur
 
 alter table public.recurring_bills enable row level security;
 
+drop policy if exists "recurring_bills_owner" on public.recurring_bills;
 create policy "recurring_bills_owner" on public.recurring_bills
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);

@@ -19,6 +19,7 @@ create table if not exists public.savings_goals (
 
 alter table public.savings_goals enable row level security;
 
+drop policy if exists "savings_goals_owner" on public.savings_goals;
 create policy "savings_goals_owner" on public.savings_goals
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 

@@ -71,18 +71,23 @@ alter table public.attachments enable row level security;
 alter table public.bank_statements enable row level security;
 alter table public.statement_transactions enable row level security;
 
+drop policy if exists "categories_owner" on public.categories;
 create policy "categories_owner" on public.categories
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+drop policy if exists "expenses_owner" on public.expenses;
 create policy "expenses_owner" on public.expenses
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+drop policy if exists "attachments_owner" on public.attachments;
 create policy "attachments_owner" on public.attachments
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+drop policy if exists "bank_statements_owner" on public.bank_statements;
 create policy "bank_statements_owner" on public.bank_statements
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+drop policy if exists "statement_transactions_owner" on public.statement_transactions;
 create policy "statement_transactions_owner" on public.statement_transactions
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
@@ -108,6 +113,7 @@ begin
 end;
 $$;
 
+drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();

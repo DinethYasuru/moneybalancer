@@ -13,5 +13,6 @@ create table if not exists public.merchant_categories (
 
 alter table public.merchant_categories enable row level security;
 
+drop policy if exists "merchant_categories_owner" on public.merchant_categories;
 create policy "merchant_categories_owner" on public.merchant_categories
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);

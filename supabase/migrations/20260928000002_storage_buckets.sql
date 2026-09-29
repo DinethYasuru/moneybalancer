@@ -10,6 +10,7 @@ insert into storage.buckets (id, name, public)
 values ('bank-statements', 'bank-statements', false)
 on conflict (id) do nothing;
 
+drop policy if exists "attachments_owner_rw" on storage.objects;
 create policy "attachments_owner_rw" on storage.objects
   for all using (
     bucket_id = 'attachments'
@@ -19,6 +20,7 @@ create policy "attachments_owner_rw" on storage.objects
     and auth.uid()::text = (storage.foldername(name))[1]
   );
 
+drop policy if exists "bank_statements_owner_rw" on storage.objects;
 create policy "bank_statements_owner_rw" on storage.objects
   for all using (
     bucket_id = 'bank-statements'
