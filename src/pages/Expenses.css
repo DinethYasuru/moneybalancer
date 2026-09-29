@@ -1,0 +1,33 @@
+.expenses-page {
+  max-width: 1600px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.expenses-page h2 {
+  font-size: 1.2rem;
+}
+
+.expenses-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+@media (min-width: 780px) {
+  .expenses-grid {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .expenses-grid > .expense-form {
+    flex: 0 0 420px;
+  }
+
+  .expenses-grid > .expense-list {
+    flex: 1;
+    min-width: 0;
+  }
+}

@@ -1,0 +1,92 @@
+.expense-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  background: var(--color-surface);
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: var(--shadow-card);
+}
+
+.expense-form h2 {
+  font-size: 1.1rem;
+}
+
+.expense-form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.expense-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  flex: 1;
+}
+
+.expense-form-auto-tag {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-accent);
+  background: rgba(45, 212, 191, 0.14);
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  margin-left: 0.35rem;
+}
+
+.expense-form-label-only {
+  margin-bottom: -0.4rem;
+}
+
+.expense-form input,
+.expense-form select {
+  padding: 0.6rem 0.7rem;
+  font-size: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-input-bg);
+  color: var(--color-text);
+}
+
+.expense-form-checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.expense-form-checkbox input {
+  width: auto;
+}
+
+.expense-form button[type='submit'] {
+  padding: 0.7rem;
+  font-size: 1rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--color-primary);
+  color: white;
+  cursor: pointer;
+}
+
+.expense-form button[type='submit']:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.expense-form-error {
+  color: var(--color-danger);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+@media (min-width: 640px) {
+  .expense-form-row {
+    flex-direction: row;
+  }
+}

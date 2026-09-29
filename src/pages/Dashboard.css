@@ -1,0 +1,161 @@
+.dashboard {
+  max-width: 1600px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.dashboard-top {
+  display: flex;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  align-items: stretch;
+}
+
+.dashboard-top > .health-gauge {
+  flex: 1.2;
+  min-width: 320px;
+}
+
+.dashboard-top > .upcoming-payments {
+  flex: 1;
+  min-width: 280px;
+}
+
+.dashboard-savings {
+  flex: 1;
+  min-width: 260px;
+  padding: 1.1rem 1.25rem;
+}
+
+.dashboard-savings-title {
+  font-size: 0.95rem;
+  margin-bottom: 0.7rem;
+}
+
+.dashboard-savings-empty {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.dashboard-savings-empty a {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.dashboard-savings-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.dashboard-savings-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  margin-bottom: 0.3rem;
+}
+
+.dashboard-savings-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--color-surface-alt);
+  overflow: hidden;
+}
+
+.dashboard-savings-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color-primary);
+  transition: width 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dashboard-savings-fill.goal-complete {
+  background: var(--color-success);
+}
+
+.dashboard-stats {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.stat-card {
+  flex: 1;
+  min-width: 170px;
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.stat-label {
+  font-size: 0.76rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stat-value {
+  font-size: 1.15rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.dashboard-minor-info {
+  display: flex;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.stat-value-sm {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.stat-up {
+  color: var(--color-danger);
+}
+
+.stat-down {
+  color: var(--color-success);
+}
+
+.stat-value-sub {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.dashboard-income-nudge {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.dashboard-income-nudge a {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.dashboard-expenses-link {
+  margin: 0;
+}
+
+.dashboard-expenses-link a {
+  color: var(--color-primary);
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 0.92rem;
+}
+
+.dashboard-expenses-link a:hover {
+  text-decoration: underline;
+}

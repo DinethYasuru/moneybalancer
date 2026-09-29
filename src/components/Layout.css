@@ -1,0 +1,99 @@
+.layout {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+
+.layout-header {
+  background: var(--gradient-header);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  box-shadow: 0 2px 12px rgba(67, 56, 202, 0.25);
+}
+
+.layout-header-inner {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 0.85rem 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.5rem;
+  color: white;
+}
+
+.layout-brand {
+  font-weight: 800;
+  font-size: 1.1rem;
+  margin-right: auto;
+  letter-spacing: -0.01em;
+}
+
+.layout-nav {
+  display: flex;
+  gap: 0.35rem;
+  order: 3;
+  flex-basis: 100%;
+}
+
+.layout-nav a {
+  text-decoration: none;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 0.4rem 0.8rem;
+  border-radius: 8px;
+}
+
+.layout-nav a:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.layout-nav a.active {
+  color: var(--color-primary-dark);
+  background: white;
+}
+
+.layout-user {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.layout-user button {
+  padding: 0.4rem 0.8rem;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  cursor: pointer;
+}
+
+.layout-user button:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.layout-main {
+  flex: 1;
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+@media (min-width: 700px) {
+  .layout-nav {
+    order: 0;
+    flex-basis: auto;
+    margin-right: auto;
+  }
+
+  .layout-brand {
+    margin-right: 1.5rem;
+  }
+}

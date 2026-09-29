@@ -1,0 +1,209 @@
+.statement-upload {
+  background: var(--color-surface);
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: var(--shadow-card);
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.statement-upload h2 {
+  font-size: 1.1rem;
+  margin-bottom: 0.4rem;
+}
+
+.statement-upload-hint {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  margin: 0 0 1rem;
+}
+
+.statement-ai-nudge {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  background: var(--color-surface-alt);
+  padding: 0.6rem 0.9rem;
+  border-radius: 8px;
+  margin: 0 0 1rem;
+}
+
+.statement-autofill-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  margin-bottom: 1rem;
+}
+
+.statement-ai-nudge a {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.statement-file-mode {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.statement-parse-btn {
+  align-self: flex-start;
+  padding: 0.55rem 1rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--color-primary);
+  color: white;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.statement-parse-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.statement-source-cell {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.statement-mode-toggle {
+  display: inline-flex;
+  gap: 0.4rem;
+  background: var(--color-surface-alt);
+  padding: 0.3rem;
+  border-radius: 10px;
+  margin-bottom: 1rem;
+}
+
+.statement-mode-toggle button {
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.statement-mode-toggle button.active {
+  background: var(--color-surface);
+  color: var(--color-primary);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.statement-paste {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.statement-paste textarea {
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  font-size: 0.85rem;
+  font-family: ui-monospace, Consolas, monospace;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-input-bg);
+  color: var(--color-text);
+  resize: vertical;
+}
+
+.statement-paste button {
+  align-self: flex-start;
+  padding: 0.55rem 1rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--color-primary);
+  color: white;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.statement-upload-error {
+  color: var(--color-danger);
+  font-size: 0.85rem;
+  white-space: pre-line;
+}
+
+.statement-upload-success {
+  color: var(--color-success);
+  font-size: 0.85rem;
+}
+
+.statement-table-wrapper {
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+
+.statement-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  min-width: 640px;
+}
+
+.statement-table th {
+  text-align: left;
+  padding: 0.4rem;
+  border-bottom: 2px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.statement-table td {
+  padding: 0.3rem 0.4rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.statement-table input,
+.statement-table select {
+  width: 100%;
+  padding: 0.35rem 0.4rem;
+  font-size: 0.85rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-input-bg);
+  color: var(--color-text);
+}
+
+.statement-table input[type='date'] {
+  min-width: 130px;
+}
+
+.statement-table input[type='number'] {
+  min-width: 90px;
+}
+
+.statement-row-excluded {
+  opacity: 0.45;
+}
+
+.statement-row-transfer {
+  background: var(--color-primary-light);
+}
+
+.statement-row-transfer td select,
+.statement-row-transfer td input {
+  border-color: var(--color-primary);
+}
+
+.statement-upload button[type='button'] {
+  padding: 0.7rem 1.2rem;
+  font-size: 1rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--color-primary);
+  color: white;
+  cursor: pointer;
+}
+
+.statement-upload button[type='button']:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

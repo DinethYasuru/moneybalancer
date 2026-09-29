@@ -1,0 +1,45 @@
+import { useEffect, type ReactNode } from 'react'
+import { NavLink } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
+import { useSettings } from '../hooks/useSettings'
+import './Layout.css'
+
+export function Layout({ children }: { children: ReactNode }) {
+  const { user, signOut } = useAuth()
+  const { settings } = useSettings()
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--color-primary', settings.accent_color)
+    document.documentElement.style.setProperty('--color-primary-light', `color-mix(in srgb, ${settings.accent_color} 16%, transparent)`)
+  }, [settings.accent_color])
+
+  return (
+    <div className="layout">
+      <header className="layout-header">
+        <div className="layout-header-inner">
+          <span className="layout-brand">MoneyBalancer</span>
+          <nav className="layout-nav">
+            <NavLink to="/" end>
+              Dashboard
+            </NavLink>
+            <NavLink to="/expenses">Expenses</NavLink>
+            <NavLink to="/income">Income</NavLink>
+            <NavLink to="/debts">Debts</NavLink>
+            <NavLink to="/bills">Monthly Bills</NavLink>
+            <NavLink to="/statements">Statements</NavLink>
+            <NavLink to="/analysis">Analysis</NavLink>
+            <NavLink to="/goals">Goals</NavLink>
+            <NavLink to="/categories">Categories</NavLink>
+            <NavLink to="/data">Data</NavLink>
+            <NavLink to="/settings">Settings</NavLink>
+          </nav>
+          <div className="layout-user">
+            <span>{user?.email}</span>
+            <button onClick={() => signOut()}>Log out</button>
+          </div>
+        </div>
+      </header>
+      <main className="layout-main page-enter">{children}</main>
+    </div>
+  )
+}
